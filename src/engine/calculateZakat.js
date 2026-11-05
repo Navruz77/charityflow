@@ -1,23 +1,48 @@
 // CharityFlow Zakat engine (Hanafi). Pure function: no network, no screens.
-// Money is integer cents. Prices are dollars per gram (up to 4 decimals).
+// Money is integer cents. Prices are USD per gram (up to 4 decimals).
 
 export const GOLD_NISAB_GRAMS = 87.48
 export const SILVER_NISAB_GRAMS = 612.36
 export const ZAKAT_RATE_DIVISOR = 40 // 2.5% = 1/40
 export const DEFAULT_SECURITIES_SHARE_PCT = 30
 export const DEFAULT_RETIREMENT_SHARE_PCT = 100
+export const DEFAULT_BUSINESS_OWNERSHIP_PCT = 100
 
 const pct = (cents, p) => Math.round((cents * p) / 100)
 
-// Reads a money/number field. Blank = 0. Negative or non-numeric adds an
-// error naming the field and counts as 0 so other entries still work.
+// Reads a money/number field. Blank = 0. Non-numeric text names the field
+// with code 'notANumber'; a negative number names it with code 'negative'.
+// Either way it counts as 0 so other entries still work.
 function makeReader(errors) {
-  return (path, v, { allowZero = true } = {}) => {
+  return (path, v) => {
     if (v === undefined || v === null || v === '') return 0
     const n = typeof v === 'string' ? Number(v.trim()) : v
-    if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) {
-      errors.push({ field: path, message: `${path} must be a number that is 0 or more` })
+    if (typeof n !== 'number' || !Number.isFinite(n)) {
+      errors.push({ field: path, code: 'notANumber' })
       return 0
+    }
+    if (n < 0) {
+      errors.push({ field: path, code: 'negative' })
+      return 0
+    }
+    return n
+  }
+}
+
+// Same validation as makeReader, but returns null for blank/missing instead
+// of 0 — lets a caller tell "not entered" apart from "entered as zero",
+// which matters for gold/silver (blank value means "price the grams instead").
+function makeOptionalReader(errors) {
+  return (path, v) => {
+    if (v === undefined || v === null || v === '') return null
+    const n = typeof v === 'string' ? Number(v.trim()) : v
+    if (typeof n !== 'number' || !Number.isFinite(n)) {
+      errors.push({ field: path, code: 'notANumber' })
+      return null
+    }
+    if (n < 0) {
+      errors.push({ field: path, code: 'negative' })
+      return null
     }
     return n
   }
@@ -26,34 +51,37 @@ function makeReader(errors) {
 export function calculateZakat(inputs = {}, prices = {}) {
   const errors = []
   const read = makeReader(errors)
+  const readOptional = makeOptionalReader(errors)
   const cents = (path, v) => Math.round(read(path, v))
   const lines = []
   const add = (category, valueCents, treatment, reasonKey) =>
     lines.push({ category, valueCents, treatment, reasonKey })
 
+  const goldPrice = Number(prices.goldUsdPerGram)
+  const silverPrice = Number(prices.silverUsdPerGram)
+  if (!(goldPrice > 0)) errors.push({ field: 'prices.goldUsdPerGram', code: 'missingPrice' })
+  if (!(silverPrice > 0)) errors.push({ field: 'prices.silverUsdPerGram', code: 'missingPrice' })
+
   // Prices in ten-thousandths of a dollar so 4 decimals stay exact.
-  const goldPrice = Number(prices.goldPerGram)
-  const silverPrice = Number(prices.silverPerGram)
-  if (!(goldPrice > 0) || !(silverPrice > 0)) {
-    errors.push({ field: 'prices', message: 'Gold and silver prices are required' })
-  }
   const toTT = (p) => Math.round(p * 10000)
-  const nisabChoice = inputs.nisab === 'gold' ? 'gold' : 'silver'
-  const nisabGrams = nisabChoice === 'gold' ? GOLD_NISAB_GRAMS : SILVER_NISAB_GRAMS
-  const pricePerGram = nisabChoice === 'gold' ? goldPrice : silverPrice
-  const nisabValueCents = pricePerGram > 0 ? Math.round((nisabGrams * toTT(pricePerGram)) / 100) : 0
 
   // Cash and savings: counted in full.
-  const cash = cents('cashCents', inputs.cashCents)
-  const savings = cents('savingsCents', inputs.savingsCents)
-  add('cash', cash, 'full', 'cash.full')
-  add('savings', savings, 'full', 'savings.full')
+  add('cash', cents('cashCents', inputs.cashCents), 'full', 'cash.full')
+  add('savings', cents('savingsCents', inputs.savingsCents), 'full', 'savings.full')
 
-  // Gold and silver: counted at their market value.
+  // Gold and silver: enter a value directly, or grams for the engine to price.
   for (const metal of ['gold', 'silver']) {
     const m = inputs[metal] || {}
-    read(`${metal}.grams`, m.grams)
-    add(metal, cents(`${metal}.valueCents`, m.valueCents), 'full', `${metal}.full`)
+    const grams = read(`${metal}.grams`, m.grams)
+    const enteredValueCents = readOptional(`${metal}.valueCents`, m.valueCents)
+    const price = metal === 'gold' ? goldPrice : silverPrice
+    const valueCents =
+      enteredValueCents !== null
+        ? Math.round(enteredValueCents)
+        : price > 0
+          ? Math.round((grams * toTT(price)) / 100)
+          : 0
+    add(metal, valueCents, 'full', `${metal}.full`)
   }
 
   // Gems: only counted if held for resale.
@@ -68,10 +96,11 @@ export function calculateZakat(inputs = {}, prices = {}) {
     const v = cents(`securities[${i}].valueCents`, s.valueCents)
     if (s.purpose === 'trade') return add('securities', v, 'full', 'securities.trade')
     if (s.countInFull) return add('securities', v, 'full', 'securities.countInFull')
-    const share = s.zakatableSharePct === undefined || s.zakatableSharePct === ''
-      ? DEFAULT_SECURITIES_SHARE_PCT
-      : read(`securities[${i}].zakatableSharePct`, s.zakatableSharePct)
-    add('securities', pct(v, Math.min(share, 100)), 'partial', 'securities.longTerm')
+    const share =
+      s.zakatableSharePct === undefined || s.zakatableSharePct === null || s.zakatableSharePct === ''
+        ? DEFAULT_SECURITIES_SHARE_PCT
+        : read(`securities[${i}].zakatableSharePct`, s.zakatableSharePct)
+    add('securities', pct(v, Math.min(share, 100)), 'reduced', 'securities.longTerm')
   })
 
   // Crypto: counted if trading/resale; long-term holdings are not counted.
@@ -81,25 +110,31 @@ export function calculateZakat(inputs = {}, prices = {}) {
     else add('crypto', v, 'full', 'crypto.trade')
   })
 
-  add('realEstateForSale', cents('realEstateForSale', inputs.realEstateForSale), 'full', 'realEstate.forSale')
+  // Real estate for sale: a list of properties currently listed for sale.
+  ;(inputs.realEstateForSale || []).forEach((p, i) => {
+    add('realEstateForSale', cents(`realEstateForSale[${i}].valueCents`, p.valueCents), 'full', 'realEstate.forSale')
+  })
 
   // Rentals: rent collected and unspent, less expenses paid, never below 0.
   ;(inputs.rentals || []).forEach((r, i) => {
     const rent = cents(`rentals[${i}].rentCollectedUnspentCents`, r.rentCollectedUnspentCents)
     const exp = cents(`rentals[${i}].expensesPaidCents`, r.expensesPaidCents)
-    add('rentals', Math.max(0, rent - exp), 'net', 'rentals.net')
+    add('rentals', Math.max(0, rent - exp), 'full', 'rentals.net')
   })
 
   // Businesses: ownership share of (cash + inventory + receivables - liabilities).
   ;(inputs.businesses || []).forEach((b, i) => {
     const p = `businesses[${i}]`
-    const own = Math.min(read(`${p}.ownershipPct`, b.ownershipPct), 100)
+    const own =
+      b.ownershipPct === undefined || b.ownershipPct === null || b.ownershipPct === ''
+        ? DEFAULT_BUSINESS_OWNERSHIP_PCT
+        : Math.min(read(`${p}.ownershipPct`, b.ownershipPct), 100)
     const net =
       cents(`${p}.cashCents`, b.cashCents) +
       cents(`${p}.inventoryCents`, b.inventoryCents) +
       cents(`${p}.receivablesCents`, b.receivablesCents) -
       cents(`${p}.liabilitiesCents`, b.liabilitiesCents)
-    add('businesses', pct(Math.max(0, net), own), 'share', 'business.share')
+    add('businesses', pct(Math.max(0, net), own), 'reduced', 'business.share')
   })
 
   // Retirement: "annual" counts the vested balance (zakatable share, less
@@ -108,11 +143,12 @@ export function calculateZakat(inputs = {}, prices = {}) {
     const p = `retirement[${i}]`
     const v = cents(`${p}.vestedBalanceCents`, r.vestedBalanceCents)
     if (r.method === 'whenAccessible') return add('retirement', v, 'excluded', 'retirement.whenAccessible')
-    const share = r.zakatableSharePct === undefined || r.zakatableSharePct === ''
-      ? DEFAULT_RETIREMENT_SHARE_PCT
-      : read(`${p}.zakatableSharePct`, r.zakatableSharePct)
+    const share =
+      r.zakatableSharePct === undefined || r.zakatableSharePct === null || r.zakatableSharePct === ''
+        ? DEFAULT_RETIREMENT_SHARE_PCT
+        : read(`${p}.zakatableSharePct`, r.zakatableSharePct)
     const penalty = cents(`${p}.penaltyTaxCents`, r.penaltyTaxCents)
-    add('retirement', Math.max(0, pct(v, Math.min(share, 100)) - penalty), 'partial', 'retirement.annual')
+    add('retirement', Math.max(0, pct(v, Math.min(share, 100)) - penalty), 'reduced', 'retirement.annual')
   })
 
   const totalZakatableCents = lines
@@ -120,17 +156,40 @@ export function calculateZakat(inputs = {}, prices = {}) {
     .reduce((sum, l) => sum + l.valueCents, 0)
 
   const debts = inputs.debts || {}
-  const debtsSubtracted =
-    cents('debts.dueNowCents', debts.dueNowCents) +
-    cents('debts.installments12mCents', debts.installments12mCents)
+  const debtsSubtracted = {
+    dueNowCents: cents('debts.dueNowCents', debts.dueNowCents),
+    installments12mCents: cents('debts.installments12mCents', debts.installments12mCents),
+  }
+  const netCents = Math.max(0, totalZakatableCents - debtsSubtracted.dueNowCents - debtsSubtracted.installments12mCents)
 
-  const netCents = Math.max(0, totalZakatableCents - debtsSubtracted)
+  // Nisab and hawl must be explicitly chosen. Missing either gives no
+  // result instead of silently defaulting.
+  const nisabChoice = inputs.nisab === 'gold' || inputs.nisab === 'silver' ? inputs.nisab : null
+  const hawlKnown = typeof inputs.heldOneLunarYear === 'boolean'
 
   let status
-  if (netCents < nisabValueCents) status = 'belowNisab' // exactly at nisab is due
-  else if (!inputs.heldOneLunarYear) status = 'notYetDue'
-  else status = 'due'
-  const zakatDueCents = status === 'due' ? Math.round(netCents / ZAKAT_RATE_DIVISOR) : 0
+  let zakatDueCents = 0
+  let nisabInfo = { choice: null, grams: null, pricePerGram: null, valueCents: null }
+
+  if (!nisabChoice) {
+    status = 'needsNisab'
+  } else {
+    const nisabGrams = nisabChoice === 'gold' ? GOLD_NISAB_GRAMS : SILVER_NISAB_GRAMS
+    const pricePerGram = nisabChoice === 'gold' ? goldPrice : silverPrice
+    const nisabValueCents = pricePerGram > 0 ? Math.round((nisabGrams * toTT(pricePerGram)) / 100) : 0
+    nisabInfo = { choice: nisabChoice, grams: nisabGrams, pricePerGram, valueCents: nisabValueCents }
+
+    if (netCents < nisabValueCents) {
+      status = 'belowNisab' // exactly at nisab is due
+    } else if (!hawlKnown) {
+      status = 'needsHawl'
+    } else if (!inputs.heldOneLunarYear) {
+      status = 'notYetDue'
+    } else {
+      status = 'due'
+      zakatDueCents = Math.round(netCents / ZAKAT_RATE_DIVISOR)
+    }
+  }
 
   return {
     ok: errors.length === 0,
@@ -139,10 +198,10 @@ export function calculateZakat(inputs = {}, prices = {}) {
     totalZakatableCents,
     netCents,
     debtsSubtracted,
-    nisab: { choice: nisabChoice, grams: nisabGrams, pricePerGram, valueCents: nisabValueCents },
+    nisab: nisabInfo,
     status,
     zakatDueCents,
     zakatDate: inputs.zakatDate ?? null,
-    pricesUsed: { goldPerGram: goldPrice, silverPerGram: silverPrice },
+    pricesUsed: { goldUsdPerGram: goldPrice, silverUsdPerGram: silverPrice },
   }
 }

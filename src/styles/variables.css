@@ -1,0 +1,52 @@
+/* Design tokens. One calm neutral palette, one accent. Swap values here
+   to retheme the whole app; nothing else should hardcode a color. */
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --text: #2b2a28;
+  --text-muted: #65625c;
+  --border: #e4e1da;
+  --accent: #1f6f5c;
+  --accent-text: #ffffff;
+  --accent-soft: #e4f0ec;
+  --danger: #b3261e;
+  --danger-soft: #fbeae8;
+  --focus-ring: #1f6f5c;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a;
+    --surface: #1d2023;
+    --surface-raised: #23262a;
+    --text: #edece9;
+    --text-muted: #a3a09a;
+    --border: #33363a;
+    --accent: #4fb897;
+    --accent-text: #0d1512;
+    --accent-soft: #1d2f29;
+    --danger: #ff8a80;
+    --danger-soft: #35201f;
+    --focus-ring: #4fb897;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+}
