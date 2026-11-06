@@ -1,9 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
-// base matches the GitHub Pages repo name
+// base is '/' since the Express server on Render serves dist/ at the root
+// (no GitHub Pages subpath anymore).
 export default defineConfig({
-  base: '/charityflow/',
+  base: '/',
   plugins: [react()],
   test: { environment: 'node', include: ['src/**/*.test.js'] },
 })

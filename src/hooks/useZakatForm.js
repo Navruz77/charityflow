@@ -27,8 +27,8 @@ export function initialFormState() {
     businesses: [emptyBusiness()],
     retirement: [emptyRetirement()],
     debts: { dueNowCents: '', installments12mCents: '' },
-    nisab: 'silver',
-    heldOneLunarYear: false,
+    nisab: '', // '' means not chosen yet — no default per PROJECT.md S1.9
+    heldOneLunarYear: null, // null means not answered yet
     zakatDate: '',
   }
 }

@@ -11,29 +11,48 @@ calculations, get reminders and plan sadaqah (voluntary charity) giving.
 Budget is $0. No card on any service. Team of 4 beginners, so keep the code simple and commented.
 
 ## Dates
-- Build freeze: **Mon Nov 9, 18:00**. Demo Nov 10 to 12. Updated plan due **Nov 11**.
-- Cut order if behind: **M7 first, then M6**. Never cut M0 to M5 or M8.
-- Never cut: engine tests, the disclaimer (S2.2), price age on every result (S12.2),
+- Build freeze: **Mon Nov 9, 18:00**. Demo Nov 10 to 12. Final plan due **Nov 10** (same day as the demo).
+- Build order matters more than anything: the planner (M7) and reminders (M6) go last.
+- Always keep: engine tests, the disclaimer (S2.2), price age on every result (S12.2),
   the nisab choice (S1.9), access-rule tests (NFR5).
 
-## Stack (do not swap without asking)
-React + Vite, plain JavaScript (no TypeScript until the Final Release), Vitest, hash routes
-(`#/calculator`), Vite base `/charityflow/`, GitHub Pages deployed by GitHub Actions
-(`.github/workflows/deploy.yml`, runs `npm test` first), Supabase free (Auth, Postgres, RLS),
-Brevo free SMTP (sign-up/reset emails via Supabase, reminder emails via API), GitHub Actions
-scheduled jobs (prices twice a day, reminders hourly), `vite-plugin-pwa` for offline,
-`Intl.DateTimeFormat` with `islamic-umalqura` (fallback `islamic-civil`) for Hijri dates,
-`localStorage` for guest saves. No server of our own.
+## Stack (changed after professor feedback; do not swap without asking)
+The professor required a real back end: no GitHub Pages, and the browser must never talk
+to the database. New design:
+- **Front end:** React + Vite, plain JavaScript, Vitest, hash routes (`#/calculator`).
+- **Back end:** one Node + Express server in `server/` that serves the built site (`dist/`)
+  and an `/api`. It is the only thing that holds keys or talks to Supabase or the price APIs.
+- **Hosting:** Render free web service, auto-deploys from `main` (build `npm ci && npm run
+  build`, start `node server/index.js`). Sleeps after 15 min idle, about 1 minute to wake, so
+  the app shows a "waking up" message. All secrets are Render environment variables.
+  The repo stays public; it contains no credentials.
+- **Database and sign-in:** Supabase (Postgres + Auth), called only from the server with the
+  secret key. Row-level security stays ON as a second layer.
+- **Email:** Brevo. Supabase sends sign-up/reset emails through Brevo SMTP; the server sends
+  reminder emails through Brevo's web API.
+- **Prices:** `GET /api/prices` fetches MetalCharts when a calculation needs a price and caches
+  it 8 hours in the `price_cache` table (API Ninjas fallback, then last stored price).
+  Never call the live API in tests; use a fake provider.
+- **Scheduled work:** GitHub Actions only (a) runs `npm test` on pull requests, (b) calls
+  `POST /api/jobs/reminders` hourly with `JOB_TOKEN`, (c) runs `price-health.yml` twice a day
+  (calls `GET /api/prices`, fails if the last good fetch is over 24 hours old).
+- **Offline:** `vite-plugin-pwa`; the service worker serves the last `/api/prices` response; the
+  app also copies the last prices into `localStorage`. Hijri dates: `Intl.DateTimeFormat`
+  `islamic-umalqura`. Guest saves: `localStorage`.
+- `.github/workflows/deploy.yml` (GitHub Pages deploy) must be replaced by a test-only
+  workflow once Render is connected.
 
 ## Hard rules
 1. Money is integer cents everywhere. Prices are dollars per gram, up to 4 decimals.
 2. The engine (`src/engine/`) is pure: no network, no screens, no storage. Never change its
    math without being asked, and run `npm test` after any change.
-3. The browser never calls the price API. A scheduled job writes `public/prices.json`.
+3. The browser never calls the price API or the database. Only `server/` does, using keys from
+   environment variables. The browser talks only to our own `/api`.
 4. Guests' entries never leave the device (NFR6). No third-party scripts, no CDNs.
-5. The database enforces access with row-level security, not the screens (NFR5).
-6. No secrets in code. Only public-safe `VITE_` values in `.env`. Service keys live only in
-   GitHub Actions secrets.
+5. Every server route checks the signed-in user and touches only that user's rows. RLS is a
+   second layer (NFR5). Sessions are an HttpOnly cookie; no token reaches page scripts.
+6. No secrets in code or in the browser bundle. Server keys live in Render env vars; only
+   `JOB_TOKEN` is also a GitHub Actions secret. The `.env` file is gitignored.
 7. No `dangerouslySetInnerHTML`, `innerHTML` or `eval`. Render user text as plain text.
 8. Mobile first (360 px wide, no horizontal scroll), accessible (labels, focus, keyboard, AA contrast).
 9. Wrap every `localStorage` read and write in try/catch and validate what is loaded.
@@ -43,88 +62,84 @@ scheduled jobs (prices twice a day, reminders hourly), `vite-plugin-pwa` for off
 GitHub repo `Navruz77/charityflow` (public, 4 collaborators). Supabase project
 `ocqcehendxpwbbzgvpie` (Data API on, auto-expose new tables OFF, auto-RLS ON). Brevo (SMTP key
 in Supabase, sender verified, API key for reminders). MetalCharts free key (200 requests a
-month, credit link "Prices via metalcharts.org" required next to public prices). API Ninjas
-free key (backup; last daily settlement; use `name=gold` / `name=silver`, `unit=g`).
-GitHub secrets already set: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
-Still to add when needed: `METALCHARTS_API_KEY`, `API_NINJAS_KEY`, `BREVO_API_KEY`,
-`SUPABASE_SERVICE_KEY`.
+month, credit link "Metal prices by MetalCharts" required next to public prices). API Ninjas
+free key (backup; last daily settlement; `name=gold` / `name=silver`, `unit=g`).
+To create: the Render web service. Render env vars to set: `SUPABASE_URL`,
+`SUPABASE_SECRET_KEY`, `METALCHARTS_API_KEY`, `API_NINJAS_KEY`, `BREVO_API_KEY`, `JOB_TOKEN`,
+`SESSION_SECRET`. GitHub secret: `JOB_TOKEN` (plus the app URL).
 
 ## Milestones (build order)
 
-**M0 Foundations: DONE.** Repo, Pages deploy, accounts, keys, first test email (landed in spam;
-expected without a domain; Outlook and school-email tests still to do).
+**M0 Foundations: mostly done.** Repo, accounts, keys done. Still to do: Express server
+skeleton in `server/` (serves `dist/`, `/api/health`), connect Render, replace the Pages
+workflow, Outlook and school-email tests, every teammate merges one PR.
 
 **M1 Engine: DONE with open items** (see "Known gaps" below).
 
-**M2 Guest calculator screens** (due Nov 3). Stories S1.1 to S1.12, S2.1 to S2.3, S3.1.
-One screen per group (cash and metals; investments and crypto; property and business;
-retirement and debts; nisab choice; Zakat date; result). Entries kept when going back.
-"Why this counts" text per step. Result lists each category, debts subtracted, net wealth,
-nisab used, amount due, and explains every line. Nisab step: gold or silver, no result until
-chosen, note for US/Canada/EU, recalculates without re-entry. Date step shows Gregorian and
-Hijri and asks the one lunar-year question. Disclaimer on every result. Definitions of nisab,
-hawl, Zakat, sadaqah one tap away. Guests give no personal information.
-Done when: a stranger finishes a calculation on a phone and a laptop, every category above $0
-has an explanation, the disclaimer is on every result, all 20 test cases match through the
-screens, no horizontal scroll at 360 px, and the network panel shows no request carrying an
-entered value.
+**M2 Guest calculator screens.** Stories S1.1 to S1.12, S2.1 to S2.3, S3.1. One screen per
+group (cash and metals; investments and crypto; property and business; retirement and debts;
+nisab choice; Zakat date; result). Entries kept when going back. "Why this counts" per step.
+Result lists each category, debts subtracted, net wealth, nisab, amount due, and explains every
+line. Nisab step: gold or silver, no result until chosen, note for US/Canada/EU, recalculates
+without re-entry. Date step shows Gregorian and Hijri and asks the lunar-year question.
+Disclaimer on every result. Definitions one tap away. Guests give no personal information.
+Done when: a stranger finishes on a phone and a laptop, every category above $0 is explained,
+the disclaimer is on every result, all 20 cases match through the screens, no horizontal scroll
+at 360 px, and the network panel shows no request carrying an entered value.
 
-**M3 Live prices** (due Nov 2). Stories S12.1 to S12.4. Workflow `refresh-prices.yml` at
-05:43 and 17:43 UTC plus manual run. Script: MetalCharts first, then API Ninjas, then keep the
-last published file and record the failure. Convert to USD per gram (31.1034768 g per troy oz
-if the source is per ounce). Reject missing, non-numeric, zero, negative values and values
-outside the sanity band (gold 20 to 1,000, silver 0.2 to 100 USD/g). Write `public/prices.json`
-(shape below), then build and deploy. Fail the run if the last good fetch is over 24 hours old
-(this is the alert). App: nisab from prices (S12.1); retrieval time on every result (S12.2);
-warning over 24 hours but still calculate (S12.3); no result and a clear message if no price
-was ever retrieved (S12.4). `#/status` page shows last success, last attempt, source, credit link.
-Never call the live API during development; use a fake `prices.json`.
-Done when: the workflow ran on schedule twice unaided, both failure drills work, and the stale
-and missing messages match S12.3 and S12.4. First task: one real request to confirm response
-field names and units before writing the script.
+**M3 Live prices.** Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
+under 8 hours old; else call MetalCharts (one request returns both metals), convert to USD per
+gram (31.1034768 g per troy oz if per ounce), reject missing/non-numeric/zero/negative values
+and anything outside gold 20 to 1,000 or silver 0.2 to 100 USD/g, store with `fetchedAt`;
+on failure try API Ninjas, then return the last stored prices and record the failed attempt.
+App: nisab from prices; retrieval time on every result; warning over 24 hours but still
+calculates; no result and a clear message if no price was ever retrieved; keep last prices in
+`localStorage`. `#/status` page: last success, last attempt, source, credit link.
+`price-health.yml` runs twice a day and fails when stale. First task: one real request to
+confirm field names and units.
+Done when: cache test (two calls within 8 hours, one provider request), both failure drills,
+and the 25-hour test behave as described.
 
-**M4 Accounts** (due Nov 4). Stories S3.2, S3.3, S3.4, S3.6. Supabase Auth email and password,
-min 8 characters, email confirmation, resend. Same message for wrong email and wrong password.
-Reset link sets a new password and signs out other devices. Delete account needs explicit
-confirmation and removes everything. Create tables in B.7 with RLS (B.8) and
-`on delete cascade` to the user. Store the browser time zone in `profiles` on account creation.
-`admins` table and `admin_read_user_data` function that logs each read. A guest who opens an
-account feature is offered registration.
-Done when: a two-user script cannot read, change or delete the other user's rows in any table;
-reset and delete flows pass; an admin read writes exactly one log row. Unknowns: delete the
-sign-in record via a database function (else a Supabase function, the only server code
-allowed); email links opened in a different browser; Supabase per-hour auth email limit.
+**M4 Accounts.** Stories S3.2, S3.3, S3.4, S3.6. Routes under `/api/auth` call Supabase Auth from
+the server; HttpOnly session cookie. Email + password (min 8), confirmation, resend. Same message
+for wrong email and wrong password. Reset link sets a new password and signs out other devices.
+`DELETE /api/account` (explicit confirmation) removes the sign-in record with the secret key and
+every row. Create the tables in B.1 with RLS and `on delete cascade`. Store the browser time zone
+in `profiles` on account creation. `admins` + `admin_read_user_data` that logs each read. Guests
+opening account features are offered registration.
+Done when: a two-user test cannot read, change or delete the other user's data through any
+`/api` route or through the database rules alone; reset and delete flows pass; one admin read
+writes exactly one log row; the network panel shows only requests to our own address.
 
-**M5 Saving and offline** (due Nov 6). Stories S4.1, S4.2, S3.5, S5.1 to S5.3.
-Guest: "Save on this device" to `localStorage`. Signed in: "Save to my account" inserts into
-`calculations`; offline shows "needs a connection" and keeps the calculation on screen. After
-sign-in, offer to add guest saves to the account (only on yes). `vite-plugin-pwa` precaches the
-app; `prices.json` network-first with cache fallback and a `localStorage` copy. Offline banner;
-calculator, explanations, definitions, disclaimer all work offline; result shows price age.
-First-visit note (open online once; on iPhone add to Home Screen). Calculation under 1 second.
-Unknown: `autoUpdate` may wipe a half-filled form; if so use a "new version ready" prompt or
-keep a draft in `sessionStorage`.
+**M5 Saving and offline.** Stories S4.1, S4.2, S3.5, S5.1 to S5.3. Guest: "Save on this device"
+to `localStorage`. Signed in: "Save to my account" posts to the server (`/api/calculations`);
+offline shows "needs a connection" and keeps the calculation on screen. After sign-in, offer to
+add guest saves (only on yes). `vite-plugin-pwa` precaches the app; prices network-first with
+last-response fallback. Offline banner. First-visit note (open online once; on iPhone add to
+Home Screen). Keep the in-progress form in `sessionStorage` and restore it after any reload
+(autoUpdate may reload the page). Calculation under 1 second.
 
-**M6 Reminders** (Nov 5 to 8, cut second). Stories S6.1, S6.3 to S6.5. Settings for Zakat date
-(Gregorian plus Hijri month/day), four reminder types (zakatMonth, ramadan, friday,
-dhulHijjah), all off by default, in-app and/or email each. Hourly `send-reminders.js`: for each
-user, local date and Hijri date from the stored time zone; skip before 09:00 local; insert a
-`reminders_sent` row (unique key makes duplicates impossible); send email through Brevo only
-if the insert happened; `--as-of <datetime>` dry run prints what would happen. Refresh the
-stored time zone whenever reminder settings are saved.
+**M6 Reminders.** Stories S6.1, S6.3 to S6.5. Zakat date (Gregorian + Hijri month/day), four
+reminder types (zakatMonth, ramadan, friday, dhulHijjah), all off by default, in-app and/or
+email each. Hourly workflow calls `POST /api/jobs/reminders` with `JOB_TOKEN`; the server decides
+each user's local date and Hijri date from the stored time zone, skips before 09:00 local,
+inserts a `reminders_sent` row (unique key prevents duplicates), and sends email through Brevo
+only if the insert happened. The reminder code accepts a pretend `as-of` date and returns who
+would be reminded without sending. Refresh the stored time zone whenever reminder settings are
+saved.
 
-**M7 Sadaqah planner** (Nov 5 to 8, cut first). Stories S8.1 to S8.3. Goals (monthly or yearly,
-name, amount), gifts (amount, date, optional recipient, note, goal), progress and streaks.
-Pure functions in `src/planner/` with Vitest tests. Periods are calendar months/years in the
-user's time zone. Removing a goal keeps its gifts with a label and stops counting them.
+**M7 Sadaqah planner.** Stories S8.1 to S8.3. Goals (monthly or yearly, name, amount), gifts
+(amount, date, optional recipient, note, goal), progress and streaks. Pure functions in
+`src/planner/` with Vitest tests. Periods are calendar months/years in the user's time zone. A
+streak counts only periods from the goal's creation date. Removing a goal keeps its gifts with a
+label and stops counting them.
 
-**M8 Hardening and demo** (Nov 8 to 9). Browser matrix in `docs/test-matrix.md` (Chrome,
-Safari, Firefox, Edge, current and previous, from 360 px), privacy checks, two-user test across
-every table, walkthrough of all 37 stories, README, rehearse the demo twice.
+There is no M8 milestone (the professor removed it). Before freeze, still run: story
+walkthrough, two-user access test, README that works from a clean checkout.
 
 ## Contracts
 
-### prices.json (B.2)
+### Price response (B.2): returned by GET /api/prices, stored in `price_cache`
 ```json
 { "schemaVersion": 1, "goldUsdPerGram": 134.34, "silverUsdPerGram": 1.96,
   "fetchedAt": "2026-10-29T06:00:12Z", "source": "metalcharts",
@@ -132,6 +147,7 @@ every table, walkthrough of all 37 stories, README, rehearse the demo twice.
 ```
 `source` is `metalcharts` or `api-ninjas`. `fetchedAt` changes only when new prices arrive.
 Stale when now minus `fetchedAt` is over 24 hours. Prices must be numbers above 0.
+`public/prices.json` was only a placeholder; remove it once `/api/prices` exists.
 
 ### localStorage (B.3)
 Keys: `cf.v1.saved` (newest first), `cf.v1.prices`, `cf.v1.firstVisitNoteDismissed`.
@@ -173,22 +189,30 @@ created_at); `gifts` (id, user_id, amount_cents > 0, given_on, recipient, note, 
 on goal delete, goal_label, created_at); `admins` (user_id); `admin_access_log` (id, admin_id,
 subject_user_id, accessed_at, action). Every `user_id` cascades on user delete.
 Access: users touch only their own rows in profiles, calculations, reminder_prefs, goals, gifts.
-On `reminders_sent` users read and mark read their own; only the job (service key) inserts.
-`admins` and `admin_access_log` are not reachable from the browser. Admins read user data only
+On `reminders_sent` users read and mark read their own; only the server inserts.
+`admins`, `admin_access_log` and `price_cache` are never reachable by a signed-in user; only the
+server touches them. The server enforces the same rules in code on every route. Admins read user data only
 through `admin_read_user_data(subject)`, which logs the read.
 
-### Brevo reminder request (B.9)
+### Server routes (B.7)
+`GET /api/prices` (anyone); `POST /api/auth/register|login|logout|reset` (anyone);
+`GET|POST|DELETE /api/calculations`, `GET|PUT /api/profile` and `/api/reminder-prefs`,
+`GET|POST|PUT|DELETE /api/goals` and `/api/gifts`, `GET /api/reminders`,
+`POST /api/reminders/read`, `DELETE /api/account` (signed-in user); `GET /api/admin/users/:id`
+(admin, logged); `POST /api/jobs/reminders` (hourly workflow with `JOB_TOKEN`).
+
+### Brevo reminder request (B.7)
 ```json
 { "sender": {"name": "CharityFlow", "email": "<verified sender>"},
   "to": [{"email": "<user email>"}], "subject": "Ramadan reminder",
   "textContent": "It is Ramadan. A small gift today counts." }
 ```
-Key goes in the `api-key` header from GitHub secrets. No financial figures in reminder emails.
+Key goes in the `api-key` header, from a Render env var. No financial figures in reminder emails.
 
 ## Story list (37 built in the MVP)
 S1.1 to S1.12, S2.1 to S2.3, S3.1 to S3.6, S4.1, S4.2, S5.1 to S5.3, S6.1, S6.3 to S6.5,
 S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4, S7.x, S9.x,
-S10.x, S11.x.
+S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Known gaps in the current code (fix before building on it)
 The engine and `public/prices.json` were written before this briefing and differ from the
