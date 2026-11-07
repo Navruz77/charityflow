@@ -21,3 +21,10 @@ alter table price_cache enable row level security;
 -- anon/authenticated roles can never read or write this table. Only a
 -- request made with the service-role key (used only by server/) bypasses
 -- RLS, which is exactly the access rule PROJECT.md specifies.
+
+-- This project has "auto-expose new tables OFF" (see PROJECT.md), so a new
+-- table gets no REST grants by default -- not even for service_role. Grant
+-- only what the server needs (no delete). anon/authenticated get nothing,
+-- both by omission here and by RLS above.
+grant usage on schema public to service_role;
+grant select, insert, update on public.price_cache to service_role;

@@ -88,7 +88,7 @@ Done when: a stranger finishes on a phone and a laptop, every category above $0 
 the disclaimer is on every result, all 20 cases match through the screens, no horizontal scroll
 at 360 px, and the network panel shows no request carrying an entered value.
 
-**M3 Live prices: built, pending real API keys** (see Status). Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
+**M3 Live prices: DONE, verified against real MetalCharts data** (see Status). Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
 under 8 hours old; else call MetalCharts (one request returns both metals), convert to USD per
 gram (31.1034768 g per troy oz if per ounce), reject missing/non-numeric/zero/negative values
 and anything outside gold 20 to 1,000 or silver 0.2 to 100 USD/g, store with `fetchedAt`;
@@ -216,6 +216,26 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 2 follow-up — M3 verified live end-to-end (2026-11-07).** Fixed three real issues found
+only by testing with real keys: (1) Supabase's new `sb_secret_`/`sb_publishable_` keys must go
+on the `apikey` header only — sending one as `Authorization: Bearer` too makes PostgREST try to
+parse it as a JWT, fail, and fall back to the `anon` role, which then hits RLS as a 403;
+`priceCacheStore.js` fixed. (2) This Supabase project has "auto-expose new tables OFF," so a
+brand-new table gets zero REST grants even for `service_role` — added explicit `grant select,
+insert, update` statements to `supabase/001_price_cache.sql` (the user re-ran just those two
+lines). (3) The real MetalCharts endpoint is `GET /v1/prices` (not `/v1/latest` as I'd guessed),
+and gold/silver are nested as `data.XAU.price`/`data.XAG.price` in troy ounces, not bare
+numbers — `providers.js` fixed and confirmed against one real request. `npm start` locally then
+returned real prices end-to-end (first call fetched live: $130.72/g gold, $1.669/g silver;
+second call was a confirmed cache hit — same `fetchedAt`, no new provider call), stored
+correctly in `price_cache`. **API Ninjas key returns "Invalid API Key" from their service** —
+not a code issue (same error regardless of endpoint/params); the user needs to check that key
+in their API Ninjas dashboard. Not blocking, since MetalCharts is tried first and works. Minor
+cosmetic note: timestamps round-trip through Postgres as `+00:00` instead of `Z` — both are
+valid ISO 8601 UTC and parse identically, no action needed. M3 is now genuinely done, not just
+built. Still outstanding: `price-health.yml` needs `APP_URL` as a GitHub secret once Render is
+live with the four env vars, and a stale/missing-price drill on the deployed site.
 
 **Step 2 — M3 live prices, built but not live-tested (2026-11-06).** `GET /api/prices` is
 implemented with the cache/fallback logic as a pure, fully-tested function

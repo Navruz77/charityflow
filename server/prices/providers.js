@@ -18,17 +18,17 @@ async function fetchWithTimeout(url, options) {
   }
 }
 
-// MetalCharts documents gold under `data.XAU`; both metals are quoted in
-// US dollars per troy ounce. Confirm field names with one real request
-// before relying on this in production (PROJECT.md M3 unknown #1).
+// Confirmed against a real request on 2026-11-07: GET /v1/prices (no query
+// params -- it returns every tracked metal) returns
+// { data: { XAU: { price, unit: 'toz', currency: 'USD', ... }, XAG: {...} } }.
 export async function fetchFromMetalCharts() {
   const key = process.env.METALCHARTS_API_KEY
   if (!key) throw new Error('METALCHARTS_API_KEY is not set')
-  const data = await fetchWithTimeout('https://api.metalcharts.org/v1/latest?base=XAU,XAG', {
+  const data = await fetchWithTimeout('https://api.metalcharts.org/v1/prices', {
     headers: { Authorization: `Bearer ${key}` },
   })
-  const goldPerOunce = Number(data?.data?.XAU)
-  const silverPerOunce = Number(data?.data?.XAG)
+  const goldPerOunce = Number(data?.data?.XAU?.price)
+  const silverPerOunce = Number(data?.data?.XAG?.price)
   if (!(goldPerOunce > 0) || !(silverPerOunce > 0)) throw new Error('MetalCharts response missing prices')
   return {
     goldUsdPerGram: troyOunceToGram(goldPerOunce),

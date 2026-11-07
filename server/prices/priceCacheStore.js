@@ -7,9 +7,12 @@ const REQUEST_TIMEOUT_MS = 8000
 function supabaseHeaders() {
   const key = process.env.SUPABASE_SECRET_KEY
   if (!key) throw new Error('SUPABASE_SECRET_KEY is not set')
+  // Supabase's new sb_secret_/sb_publishable_ keys are short strings, not
+  // JWTs, and must go on the apikey header only. Sending one as
+  // Authorization: Bearer makes PostgREST try to parse it as a JWT, fail,
+  // and fall back to the anon role -- which then gets a 403 from RLS.
   return {
     apikey: key,
-    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
   }
 }
