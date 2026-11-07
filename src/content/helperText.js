@@ -29,6 +29,8 @@ export const helperText = {
   debtsDueNowCents: 'Debts you owe right now, such as unpaid bills.',
   debtsInstallments12mCents: 'The next 12 months of installment payments you owe, such as loan payments.',
   nisab: 'Silver nisab is lower, so more people reach it. Gold nisab is the more cautious, traditional choice.',
+  nisabRegionNote:
+    'Many scholars recommend the silver nisab for Muslims in the US, Canada and the EU, since it is more cautious and benefits those in need. This is general guidance, not a ruling for your situation — if unsure, ask a local scholar.',
   heldOneLunarYear: 'Zakat is only due on wealth you have held for one full lunar year (about 354 days).',
   zakatDate: 'The date you are calculating Zakat for. This is used to label your result.',
 }

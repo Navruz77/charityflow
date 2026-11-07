@@ -36,6 +36,7 @@ export default function StepSettings({ step, total, form, setForm, onBack, onNex
             <option value="gold">Gold (87.48g)</option>
           </select>
           {touched && nisabMissing && <p className="field-error">Choose a nisab threshold to continue.</p>}
+          <p className="helper">{helperText.nisabRegionNote}</p>
         </div>
 
         <div className="field">

@@ -217,6 +217,20 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 1 — M2 gaps closed (2026-11-06).** Audited M2 against its "Done when" list. Fixed: the
+US/Canada/EU nisab note was missing from the Settings step (added, `helperText.nisabRegionNote`);
+definitions were only reachable from Home, not from the result screen (extracted to a shared
+`Definitions` component, now on both). Already satisfied before this step: every category has
+an explanation (`reasonText.js`), the disclaimer is on every page via the footer, nisab/lunar-year
+require an explicit answer, the date step shows Gregorian and Hijri, guests give no personal
+info, and the only network request is a static GET of `public/prices.json` carrying no entered
+value. `public/prices.json` remains the fake price source until M3 lands, as instructed.
+CSS was audited for fixed widths that could overflow at 360px — none found (everything uses
+`max-width` with flex-wrap) — but this is not a substitute for a real-device check, which
+nobody has run yet. **Still open and NOT verified: "all 20 cases match through the screens."**
+I do not have the 20-case spreadsheet Mufti Ahmad confirmed; without those inputs/expected
+results I can't build or run that check. Needs the data from the user.
+
 **Step 0 follow-up (2026-11-06).** Mufti Ahmad confirmed the 20-case spreadsheet against the
 engine with no corrections needed. Known-gap #8 is closed — the retirement
 `annual`/`whenAccessible` rules and rounding are confirmed as built. M1 is now fully DONE.

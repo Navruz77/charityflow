@@ -1,5 +1,6 @@
 import { centsToDisplay } from '../lib/money.js'
 import { getReasonText } from '../content/reasonText.js'
+import Definitions from '../components/Definitions.jsx'
 
 const STATUS_COPY = {
   due: { className: 'due', title: 'Zakat is due' },
@@ -48,6 +49,8 @@ export default function ResultsPage({ result, pricesUsed, onStartOver }) {
           Prices via metalcharts.org
         </a>
       </p>
+
+      <Definitions />
 
       <div style={{ textAlign: 'center' }}>
         <button type="button" className="btn btn-secondary" onClick={onStartOver}>
