@@ -24,6 +24,14 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true })
 })
 
+// TEMPORARY diagnostic route -- reports only whether each env var is
+// present (never the value), to debug why Render isn't passing them
+// through. Remove this once M3 is confirmed working live.
+app.get('/api/debug-env', (req, res) => {
+  const names = ['SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'METALCHARTS_API_KEY', 'API_NINJAS_KEY']
+  res.json(Object.fromEntries(names.map((n) => [n, Boolean(process.env[n])])))
+})
+
 app.use(pricesRouter)
 
 app.use(express.static(distDir))
