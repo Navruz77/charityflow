@@ -217,6 +217,20 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 2 follow-up — M3 confirmed live on Render (2026-11-07).** After deploying, `/api/prices`
+kept returning 500 with `SUPABASE_URL is not set` even after re-adding env vars and a clean
+redeploy. Root cause: the 4 keys had been added to Render as **Secret Files**, not
+**Environment Variables** — a Secret File writes to disk, never to `process.env`, so the app
+could never see them regardless of redeploys. Diagnosed with a temporary `/api/debug-env` route
+(reported only true/false per var, never a value) added, tested, then removed once confirmed.
+After moving the 4 keys to real Environment Variables, Render auto-restarted and
+`https://charityflow-app.onrender.com/api/prices` returned real prices
+(`goldUsdPerGram: 130.7247`, `silverUsdPerGram: 1.669`), matching the same cached row from the
+earlier local test. `/api/health` was live throughout. M3 is now confirmed live, not just
+locally verified. Still open: `price-health.yml`'s `APP_URL` secret should be re-checked now
+that the service is confirmed stable, and the live calculator/status pages haven't been
+clicked through in a browser yet (only curl-tested).
+
 **Step 2 follow-up — M3 verified live end-to-end (2026-11-07).** Fixed three real issues found
 only by testing with real keys: (1) Supabase's new `sb_secret_`/`sb_publishable_` keys must go
 on the `apikey` header only — sending one as `Authorization: Bearer` too makes PostgREST try to
