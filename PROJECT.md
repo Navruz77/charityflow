@@ -70,11 +70,12 @@ To create: the Render web service. Render env vars to set: `SUPABASE_URL`,
 
 ## Milestones (build order)
 
-**M0 Foundations: mostly done.** Repo, accounts, keys done. Still to do: Express server
-skeleton in `server/` (serves `dist/`, `/api/health`), connect Render, replace the Pages
-workflow, Outlook and school-email tests, every teammate merges one PR.
+**M0 Foundations: mostly done.** Repo, accounts, keys, Express server skeleton, Pages workflow
+replaced, and Render connection all done. Deferred by the team to later: Outlook/school-email
+tests, every teammate merging one PR. Neither blocks M2 or M3.
 
-**M1 Engine: DONE with open items** (see "Known gaps" below).
+**M1 Engine: DONE.** The 20-case spreadsheet has been confirmed by Mufti Ahmad with no
+corrections needed (see Status below).
 
 **M2 Guest calculator screens.** Stories S1.1 to S1.12, S2.1 to S2.3, S3.1. One screen per
 group (cash and metals; investments and crypto; property and business; retirement and debts;
@@ -216,6 +217,12 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 0 follow-up (2026-11-06).** Mufti Ahmad confirmed the 20-case spreadsheet against the
+engine with no corrections needed. Known-gap #8 is closed — the retirement
+`annual`/`whenAccessible` rules and rounding are confirmed as built. M1 is now fully DONE.
+Render is connected (done by the user). Outlook/school-email spam tests and teammates each
+merging a PR are deferred by the user to later — not blocking the next steps.
+
 **Step 0 — foundations check (2026-11-06).** Checked the engine against every item in "Known
 gaps" below: items 1-7 were already fixed in an earlier session (prices renamed to
 `goldUsdPerGram`/`silverUsdPerGram`, gold/silver price themselves from grams when `valueCents`
@@ -230,17 +237,9 @@ pass. Open: the M0 items that need a human (Render connection, Outlook/school-em
 every teammate merging one PR) and the 20-case spreadsheet / Mufti Ahmad confirmation for
 engine item 8 — neither is something to do from code.
 
-## Known gaps in the current code (fix before building on it)
-The engine and `public/prices.json` were written before this briefing and differ from the
-contracts above. Align them to the contracts, keeping the 25 existing tests green or updated:
-1. Prices use `goldPerGram` / `silverPerGram`; the contract is `goldUsdPerGram`,
-   `silverUsdPerGram`, `fetchedAt` plus the extra `prices.json` fields.
-2. Gold and silver entered in grams are ignored; the engine reads only `valueCents`. It must
-   compute value from grams when `valueCents` is null.
-3. Line `treatment` uses `full|partial|net|share|excluded`; contract is `full|reduced|excluded`.
-4. Errors are `{field, message}`; contract is `{field, code}`.
-5. `realEstateForSale` is a single number; contract is a list of `{valueCents}`.
-6. Tests use invented prices (140 / 1.6). Use 134.34 / 1.96 and the B.6 case.
-7. Missing `nisab` or `heldOneLunarYear` should give no result, not a default.
-8. Retirement "annual" vs "whenAccessible" and the 20-case rounding are not yet confirmed
-   against Requirements Appendix A / Mufti Ahmad. Do not change them without being told.
+## Known gaps in the current code
+All closed as of Step 0 (2026-11-06). Items 1-7 (price field names, grams-to-value, line
+treatment values, error shape, `realEstateForSale` as a list, test prices, no-default
+nisab/lunar-year) were fixed in an earlier session. Item 8 (retirement `annual`/
+`whenAccessible` and the 20-case rounding) is now confirmed by Mufti Ahmad with no
+corrections needed. Nothing open here.
