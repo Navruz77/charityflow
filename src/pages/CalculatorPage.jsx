@@ -1,8 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { useZakatForm } from '../hooks/useZakatForm.js'
 import { usePrices } from '../hooks/usePrices.js'
-import { dollarsTextToCents } from '../lib/money.js'
-import { getErrorMessage } from '../content/errorText.js'
 import StepCashSavings from '../components/steps/StepCashSavings.jsx'
 import StepGoldSilver from '../components/steps/StepGoldSilver.jsx'
 import StepGems from '../components/steps/StepGems.jsx'
@@ -35,9 +33,7 @@ const TOTAL_STEPS = STEPS.length + 1 // + the summary step
 
 export default function CalculatorPage() {
   const { form, setForm, resetForm, calculate } = useZakatForm()
-  const { prices, error: priceError, loading: pricesLoading } = usePrices()
-  const [customGoldPrice, setCustomGoldPrice] = useState('')
-  const [customSilverPrice, setCustomSilverPrice] = useState('')
+  const { prices, error: priceError, loading: pricesLoading, stale } = usePrices()
   const [stepIndex, setStepIndex] = useState(0)
   const [errors, setErrors] = useState([])
   const [result, setResult] = useState(null)
@@ -47,32 +43,15 @@ export default function CalculatorPage() {
   const next = () => setStepIndex((i) => Math.min(i + 1, STEPS.length))
   const back = () => setStepIndex((i) => Math.max(i - 1, 0))
 
-  const effectivePrices = () => {
-    if (prices) return prices
-    const gold = dollarsTextToCents(customGoldPrice)
-    const silver = dollarsTextToCents(customSilverPrice)
-    if (gold === null || silver === null || gold === 0 || silver === 0) return null
-    return {
-      goldUsdPerGram: gold / 100,
-      silverUsdPerGram: silver / 100,
-      fetchedAt: null,
-      source: 'entered by you',
-    }
-  }
-
   const handleCalculate = () => {
-    const pricesToUse = effectivePrices()
-    if (!pricesToUse) {
-      setErrors([{ field: 'prices', code: 'missingPrice' }])
-      return
-    }
-    const r = calculate(pricesToUse)
+    if (!prices) return // the summary screen hides the button until prices exist
+    const r = calculate(prices)
     if (!r.ok) {
       setErrors(r.errors)
       return
     }
     setErrors([])
-    setPricesUsed(pricesToUse)
+    setPricesUsed(prices)
     setResult(r)
   }
 
@@ -95,18 +74,23 @@ export default function CalculatorPage() {
     return (
       <>
         {pricesLoading && <p className="muted">Loading today's gold and silver prices…</p>}
-        {priceError && !prices && (
+        {!pricesLoading && !prices && (
+          // S12.4: no price has ever been retrieved — no result is possible.
           <div className="card">
-            <p className="field-error">Could not load today's prices: {priceError}</p>
-            <p className="helper">You can still continue by typing today's prices yourself.</p>
-            <div className="field">
-              <label htmlFor="customGold">Gold price per gram ($)</label>
-              <input id="customGold" type="text" inputMode="decimal" value={customGoldPrice} onChange={(e) => setCustomGoldPrice(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="customSilver">Silver price per gram ($)</label>
-              <input id="customSilver" type="text" inputMode="decimal" value={customSilverPrice} onChange={(e) => setCustomSilverPrice(e.target.value)} />
-            </div>
+            <p className="field-error">
+              CharityFlow cannot work out the nisab or any weight-based value right now:{' '}
+              {priceError ?? 'no price is available.'}
+            </p>
+            <p className="helper">Please try again in a few minutes.</p>
+          </div>
+        )}
+        {!pricesLoading && prices && stale && (
+          // S12.3: prices are over 24 hours old — warn, but still allow calculating.
+          <div className="card">
+            <p className="field-error">
+              Today's gold and silver prices could not be refreshed, so this result will use
+              prices from {new Date(prices.fetchedAt).toLocaleString()}.
+            </p>
           </div>
         )}
         <StepSummary
@@ -114,11 +98,8 @@ export default function CalculatorPage() {
           total={TOTAL_STEPS}
           form={form}
           goToStep={goToStep}
-          onCalculate={handleCalculate}
-          calcError={(() => {
-            const e = errors.find((err) => err.field === 'prices' || err.field === 'prices.goldUsdPerGram' || err.field === 'prices.silverUsdPerGram')
-            return e ? getErrorMessage('Prices', e.code) : undefined
-          })()}
+          onCalculate={prices ? handleCalculate : undefined}
+          calcError={errors.find((e) => e.field === 'prices')?.message}
         />
       </>
     )

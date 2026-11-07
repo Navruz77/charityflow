@@ -88,7 +88,7 @@ Done when: a stranger finishes on a phone and a laptop, every category above $0 
 the disclaimer is on every result, all 20 cases match through the screens, no horizontal scroll
 at 360 px, and the network panel shows no request carrying an entered value.
 
-**M3 Live prices.** Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
+**M3 Live prices: built, pending real API keys** (see Status). Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
 under 8 hours old; else call MetalCharts (one request returns both metals), convert to USD per
 gram (31.1034768 g per troy oz if per ounce), reject missing/non-numeric/zero/negative values
 and anything outside gold 20 to 1,000 or silver 0.2 to 100 USD/g, store with `fetchedAt`;
@@ -216,6 +216,34 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 2 — M3 live prices, built but not live-tested (2026-11-06).** `GET /api/prices` is
+implemented with the cache/fallback logic as a pure, fully-tested function
+(`server/prices/decidePrices.js`, 10 tests, fake providers only — never calls a real API in
+tests). Real I/O is thin and separate: `server/prices/providers.js` (MetalCharts then API
+Ninjas, 8s timeout each), `server/prices/priceCacheStore.js` (Supabase REST with the
+service-role key, 8s timeout), wired in `server/routes/prices.js`. SQL for `price_cache` is in
+`supabase/001_price_cache.sql` — RLS on with zero policies, so only the service-role key (used
+only by the server) can ever touch it. The app: `usePrices` now calls our own `/api/prices`,
+keeps a `cf.v1.prices` localStorage copy (Appendix B.3, ready for M5 offline use),
+`CalculatorPage` shows a stale-prices warning but still calculates (S12.3) and a blocking
+"no price available" message when none has ever been retrieved (S12.4) — the M2 custom-price
+workaround is retired now that real prices exist. `#/status` shows last success, last attempt,
+source and the credit link. `price-health.yml` calls the live app twice a day and fails if
+stale. Security pass done as part of this step: no secret ever in a response body or log line
+visible to the client (checked by starting the server with no env vars set — client got a
+generic 500, the real cause only hit the server log); all three external calls (MetalCharts,
+API Ninjas, Supabase REST) have an 8-second timeout; price values are bounds-checked
+(sanity band) before being trusted or cached; `price_cache` is unreachable by any signed-in
+user by construction (RLS, no policies); `x-powered-by` is disabled and basic
+`X-Content-Type-Options`/`X-Frame-Options`/`Referrer-Policy` headers are set; no CORS
+middleware was added since the browser only ever needs same-origin access. 72/72 tests, build
+and lint clean.
+**NOT verified against the real APIs** — I have no MetalCharts or API Ninjas key. The response
+shapes in `providers.js` (MetalCharts' `data.XAU`/`data.XAG` in troy ounces; API Ninjas'
+`{price}` per metal) are my best read of the public docs, not confirmed. Needs a human with
+real keys to run one request and report back before this is trusted in production — see the
+report for exactly what to check.
 
 **Step 1 follow-up — M2 is DONE (2026-11-06).** Mufti Ahmad confirmed the engine's rules (not a
 specific spreadsheet), so the 20 cases were built directly: `src/hooks/twentyCases.test.js`

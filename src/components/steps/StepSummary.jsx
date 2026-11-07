@@ -46,7 +46,7 @@ export default function StepSummary({ step, total, form, goToStep, onCalculate, 
         <button type="button" className="btn btn-secondary" onClick={() => goToStep(10)}>
           Back
         </button>
-        <button type="button" className="btn btn-primary" onClick={onCalculate}>
+        <button type="button" className="btn btn-primary" onClick={onCalculate} disabled={!onCalculate}>
           Calculate my Zakat
         </button>
       </div>

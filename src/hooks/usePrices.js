@@ -1,30 +1,57 @@
 import { useEffect, useState } from 'react'
+import { loadGuestData, saveGuestData } from '../lib/storage.js'
 
-// Loads public/prices.json. If it fails, the caller can fall back to a
-// custom price the user types in themselves.
+const STORAGE_KEY = 'cf.v1.prices' // Appendix B.3
+
+function isValidPriceResponse(data) {
+  return (
+    data &&
+    typeof data === 'object' &&
+    Number(data.goldUsdPerGram) > 0 &&
+    Number(data.silverUsdPerGram) > 0 &&
+    typeof data.fetchedAt === 'string'
+  )
+}
+
+// Calls our own server's GET /api/prices — the browser never talks to a
+// price API directly. On success, keeps a copy in localStorage so a later
+// offline session (M5) has something to show. On failure, falls back to
+// that copy if one exists.
 export function usePrices() {
   const [prices, setPrices] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [stale, setStale] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${import.meta.env.BASE_URL}prices.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Price file not found')
+    fetch('/api/prices')
+      .then(async (res) => {
+        if (res.status === 503) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.message || 'No price has ever been retrieved.')
+        }
+        if (!res.ok) throw new Error(`Price request failed with ${res.status}`)
         return res.json()
       })
       .then((data) => {
         if (cancelled) return
-        if (!(Number(data.goldUsdPerGram) > 0) || !(Number(data.silverUsdPerGram) > 0)) {
-          throw new Error('Price file is missing valid prices')
-        }
+        if (!isValidPriceResponse(data)) throw new Error('Price response was missing valid prices')
+        saveGuestData(STORAGE_KEY, data, isValidPriceResponse)
         setPrices(data)
+        setStale(Date.now() - new Date(data.fetchedAt).getTime() > 24 * 60 * 60 * 1000)
         setLoading(false)
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err.message || 'Could not load prices')
+        const cachedCopy = loadGuestData(STORAGE_KEY, isValidPriceResponse)
+        if (cachedCopy) {
+          setPrices(cachedCopy)
+          setStale(true) // we only fall back here when a fresh fetch failed
+          setError(err.message || 'Could not reach the price service; showing the last known prices.')
+        } else {
+          setError(err.message || 'Could not load prices')
+        }
         setLoading(false)
       })
     return () => {
@@ -32,5 +59,5 @@ export function usePrices() {
     }
   }, [])
 
-  return { prices, error, loading }
+  return { prices, error, loading, stale }
 }

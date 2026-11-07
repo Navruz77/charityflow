@@ -1,0 +1,29 @@
+name: Price health
+
+on:
+  schedule:
+    - cron: '0 6,18 * * *' # twice a day
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call GET /api/prices and check freshness
+        run: |
+          set -e
+          response=$(curl -sf "${{ secrets.APP_URL }}/api/prices")
+          echo "$response"
+          fetched_at=$(echo "$response" | node -e "process.stdin.once('data', d => console.log(JSON.parse(d).fetchedAt))")
+          if [ -z "$fetched_at" ] || [ "$fetched_at" = "null" ]; then
+            echo "No price has ever been retrieved."
+            exit 1
+          fi
+          fetched_epoch=$(date -d "$fetched_at" +%s)
+          now_epoch=$(date +%s)
+          age_hours=$(( (now_epoch - fetched_epoch) / 3600 ))
+          echo "Prices are $age_hours hours old."
+          if [ "$age_hours" -gt 24 ]; then
+            echo "Prices are stale (over 24 hours old)."
+            exit 1
+          fi
