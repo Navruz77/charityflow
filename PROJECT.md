@@ -214,6 +214,22 @@ S1.1 to S1.12, S2.1 to S2.3, S3.1 to S3.6, S4.1, S4.2, S5.1 to S5.3, S6.1, S6.3 
 S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4, S7.x, S9.x,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
+## Status (updated after each step; newest first)
+
+**Step 0 — foundations check (2026-11-06).** Checked the engine against every item in "Known
+gaps" below: items 1-7 were already fixed in an earlier session (prices renamed to
+`goldUsdPerGram`/`silverUsdPerGram`, gold/silver price themselves from grams when `valueCents`
+is null, line `treatment` is `full|reduced|excluded`, errors are `{field, code}`,
+`realEstateForSale` is a list, test prices are 134.34/1.96, the B.6 case passes, and
+`nisab`/`heldOneLunarYear` give no result until explicitly chosen). Item 8 (retirement
+annual/whenAccessible, the 20-case rounding) is intentionally still open — it needs Mufti
+Ahmad's confirmation, not a code change. The app shell also already exists: `src/components/
+Header.jsx` and `Footer.jsx`, `src/pages/HomePage.jsx`, one routes file (`src/routes.js`), and
+shared CSS with dark mode (`src/styles/variables.css`). `npm test` (43/43) and `npm run build`
+pass. Open: the M0 items that need a human (Render connection, Outlook/school-email tests,
+every teammate merging one PR) and the 20-case spreadsheet / Mufti Ahmad confirmation for
+engine item 8 — neither is something to do from code.
+
 ## Known gaps in the current code (fix before building on it)
 The engine and `public/prices.json` were written before this briefing and differ from the
 contracts above. Align them to the contracts, keeping the 25 existing tests green or updated:
