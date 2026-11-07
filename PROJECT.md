@@ -88,7 +88,8 @@ Done when: a stranger finishes on a phone and a laptop, every category above $0 
 the disclaimer is on every result, all 20 cases match through the screens, no horizontal scroll
 at 360 px, and the network panel shows no request carrying an entered value.
 
-**M3 Live prices: DONE, verified against real MetalCharts data** (see Status). Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
+**M3 Live prices: DONE** — live on Render, verified against real MetalCharts data and a manual
+browser walkthrough (see Status). Stories S12.1 to S12.4. `GET /api/prices`: use the `price_cache` row if
 under 8 hours old; else call MetalCharts (one request returns both metals), convert to USD per
 gram (31.1034768 g per troy oz if per ounce), reject missing/non-numeric/zero/negative values
 and anything outside gold 20 to 1,000 or silver 0.2 to 100 USD/g, store with `fetchedAt`;
@@ -216,6 +217,15 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 2 closed — M3 fully verified (2026-11-07).** `price-health.yml` run manually: passed
+clean (prices 1 hour old, exit 0). Manual browser walkthrough on the live site against 4 test
+cases computed from today's real prices (gold $130.7247/g, silver $1.669/g) — cash above silver
+nisab (due, $250.00 on $10,000), same cash below gold nisab (belowNisab), a small amount below
+silver nisab (belowNisab), and not held a year (notYetDue) — all matched expected output,
+including net wealth and nisab value shown on the result screen. M3 is done: built, tested,
+broken once in production (Secret Files vs. Environment Variables), fixed, and now verified by
+hand in a real browser. Nothing left open for M3.
 
 **Step 2 follow-up — M3 confirmed live on Render (2026-11-07).** After deploying, `/api/prices`
 kept returning 500 with `SUPABASE_URL is not set` even after re-adding env vars and a clean
