@@ -217,6 +217,18 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 1 follow-up — M2 is DONE (2026-11-06).** Mufti Ahmad confirmed the engine's rules (not a
+specific spreadsheet), so the 20 cases were built directly: `src/hooks/twentyCases.test.js`
+covers every category (cash/savings, gold/silver by value and by grams, gems resale/personal,
+securities trade/long-term-default/count-in-full, crypto trade/long-term, multiple real-estate
+entries, rentals net of expenses, business ownership share, retirement annual/when-accessible),
+the nisab boundary (above, below, exactly at), debts subtraction, and gold-vs-silver nisab on
+the same wealth. Each case is entered as form text and run through `buildEngineInputs()` — the
+same path the screens use — then checked against the confirmed engine's own output, so it
+verifies the screens' input handling, not the religious rules (those were Mufti Ahmad's and
+engine item 8's job). 63/63 tests pass. M2's "Done when" list is now fully satisfied except the
+one thing no one has done yet: a real phone/laptop walkthrough by someone outside the team.
+
 **Step 1 — M2 gaps closed (2026-11-06).** Audited M2 against its "Done when" list. Fixed: the
 US/Canada/EU nisab note was missing from the Settings step (added, `helperText.nisabRegionNote`);
 definitions were only reachable from Home, not from the result screen (extracted to a shared
