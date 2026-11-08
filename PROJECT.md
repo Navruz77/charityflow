@@ -218,6 +218,18 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Live URL moved to https://charityflow.onrender.com (2026-11-08).** The user moved hosting to
+the Render service `charityflow` (four keys as Environment Variables, Supabase Site URL and the
+`APP_URL` GitHub secret updated). The old `charityflow-app` service is to be deleted. Full
+re-check on the new URL: live bundle equals the `583bf96` build, security headers present, no
+key or Supabase address in the bundle; CI green; 92/92 unit tests (engine + 20 cases); live
+prices in band and served from cache; `npm run test:access` 61/61; email-link flows checked
+with Supabase-generated links (no email sent): link points at the new Site URL, confirm signs
+in, used link fails, confirmed email can't re-register, reset sets a new password, old one
+fails, other device signed out, delete removes the account. Still needs a human: real-inbox
+phone walkthrough, M2 stranger test at 360 px, and a manual Price health run to prove the
+`APP_URL` secret.
+
 **Step 3 follow-up — M4 access test passed live (2026-11-07).** The user ran
 `002_accounts.sql` (all 8 tables present), set the Site URL and both email templates, and added
 `SUPABASE_PUBLISHABLE_KEY` to local `.env`. `npm run test:access` against the real Supabase:
