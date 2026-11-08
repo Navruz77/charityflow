@@ -360,3 +360,25 @@ a.btn {
   justify-content: center;
   text-decoration: none;
 }
+
+/* Password strength meter: four bars, filled by strength. */
+.strength-meter {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.strength-meter span {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.strength-meter span.on {
+  background: var(--accent);
+}
+
+.strength-meter span.on.s1 {
+  background: var(--danger);
+}

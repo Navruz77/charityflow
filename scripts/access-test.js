@@ -110,7 +110,7 @@ async function main() {
     check('login response carries no token', !/token/i.test(JSON.stringify(loginA.data)))
 
     // ---- S3.3: identical message for unknown email and wrong password
-    const wrongPass = await appBrowser().call('POST', '/api/auth/login', { email: emailA, password: 'wrong-password-1' })
+    const wrongPass = await appBrowser().call('POST', '/api/auth/login', { email: emailA, password: 'Wrong-password-1x' })
     const unknown = await appBrowser().call('POST', '/api/auth/login', { email: `nobody-${tag}@example.com`, password })
     check(
       'unknown email and wrong password give the identical answer',
@@ -127,7 +127,8 @@ async function main() {
     check("A (not admin) cannot read B through the admin route", (await a.call('GET', `/api/admin/users/${idB}`)).status === 403)
     check('A (not admin) cannot read admin counts', (await a.call('GET', '/api/admin/stats')).status === 403)
     await a.call('DELETE', '/api/account', { userId: idB })
-    check('DELETE /api/account without confirmation removes nothing', (await countRows('profiles', idB)) === 1 && (await countRows('profiles', idA)) === 1)
+    await a.call('DELETE', '/api/account', { confirm: 'DELETE', password: 'Wrong-pass-123x', userId: idB })
+    check('DELETE /api/account without confirmation or with a wrong password removes nothing', (await countRows('profiles', idB)) === 1 && (await countRows('profiles', idA)) === 1)
 
     // ---- give B a row in every table, as B (own token) where users may write
     const tokenA = (await http(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: PUBLISHABLE }, body: { email: emailA, password } })).data?.access_token
@@ -191,7 +192,7 @@ async function main() {
     // ---- delete B through the app; nothing of B remains
     console.log('\n-- delete account (S3.6) --')
     const bCookie = b.cookie
-    const delB = await b.call('DELETE', '/api/account', { confirm: 'DELETE' })
+    const delB = await b.call('DELETE', '/api/account', { confirm: 'DELETE', password })
     check('B deletes their account', delB.status === 200, `${delB.status}`)
     created.splice(created.indexOf(idB), 1)
     for (const table of USER_TABLES) {

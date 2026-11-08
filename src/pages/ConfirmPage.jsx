@@ -9,7 +9,7 @@ import { FormMessage, PasswordField, WakeNote } from '../components/AuthFields.j
 // The user taps a button before anything happens. Some email services open
 // every link to scan it; a button press stops a scanner using up the link.
 export default function ConfirmPage() {
-  const { refresh } = useSession()
+  const { refresh, email } = useSession()
   const [params] = useState(hashParams)
   const tokenHash = params.get('token_hash')
   const type = params.get('type')
@@ -79,7 +79,7 @@ export default function ConfirmPage() {
     return (
       <form className="card form-stack" onSubmit={saveNewPassword}>
         <h2>Choose a new password</h2>
-        <PasswordField value={password} onChange={setPassword} isNew label="New password" />
+        <PasswordField value={password} onChange={setPassword} isNew email={email} label="New password" />
         <FormMessage kind="error">{error}</FormMessage>
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? 'Saving…' : 'Save new password'}

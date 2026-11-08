@@ -2,6 +2,7 @@
 // of Supabase Auth and the database, so no test touches the real services.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
+import { createAuthLimits } from '../auth/rateLimit.js'
 
 // ---------------------------------------------------------------- fakes
 
@@ -130,12 +131,15 @@ function makeFakes() {
 let server
 let base
 let fakes
+let currentLimits
 
 beforeAll(async () => {
   // One server for the file; the fakes are swapped per test through this proxy.
   const auth = new Proxy({}, { get: (_, k) => (...a) => fakes.auth[k](...a) })
   const db = new Proxy({}, { get: (_, k) => (...a) => fakes.db[k](...a) })
-  const app = createApp({ auth, db })
+  const breach = { isBreached: async (pw) => fakes.breached.has(pw) }
+  const limits = new Proxy({}, { get: (_, k) => currentLimits[k] })
+  const app = createApp({ auth, db, breach, limits })
   await new Promise((resolve) => {
     server = app.listen(0, resolve)
   })
@@ -146,6 +150,8 @@ afterAll(() => new Promise((resolve) => server.close(resolve)))
 
 beforeEach(() => {
   fakes = makeFakes()
+  fakes.breached = new Set(['Leaked-but-long-1'])
+  currentLimits = createAuthLimits()
 })
 
 // A tiny browser: remembers the session cookie between requests.
@@ -181,7 +187,7 @@ function browser() {
 }
 
 // Registers, confirms through the email link and returns a signed-in browser.
-async function confirmedUser(email, password = 'password123', timeZone = 'America/New_York') {
+async function confirmedUser(email, password = 'Blue-garden-42', timeZone = 'America/New_York') {
   const b = browser()
   await b.post('/api/auth/register', { email, password, timeZone })
   await b.post('/api/auth/confirm', { tokenHash: `confirm-${email}`, type: 'email' })
@@ -193,15 +199,15 @@ async function confirmedUser(email, password = 'password123', timeZone = 'Americ
 describe('register (S3.2)', () => {
   it('needs a valid email and a password of at least 8 characters', async () => {
     const b = browser()
-    expect((await b.post('/api/auth/register', { email: 'nope', password: 'password123' })).status).toBe(400)
-    const short = await b.post('/api/auth/register', { email: 'a@x.com', password: '1234567' })
+    expect((await b.post('/api/auth/register', { email: 'nope', password: 'Blue-garden-42' })).status).toBe(400)
+    const short = await b.post('/api/auth/register', { email: 'a@x.com', password: 'Abc-123' })
     expect(short.status).toBe(400)
     expect(short.data.error).toBe('invalid_password')
   })
 
   it('creates the account, stores the browser time zone, and waits for confirmation', async () => {
     const b = browser()
-    const res = await b.post('/api/auth/register', { email: 'A@X.com ', password: 'password123', timeZone: 'Asia/Tashkent' })
+    const res = await b.post('/api/auth/register', { email: 'A@X.com ', password: 'Blue-garden-42', timeZone: 'Asia/Tashkent' })
     expect(res.status).toBe(201)
     expect(res.data.needsConfirmation).toBe(true)
     expect(b.cookie).toBeNull() // not signed in until confirmed
@@ -210,21 +216,21 @@ describe('register (S3.2)', () => {
   })
 
   it('falls back to UTC for an unknown time zone', async () => {
-    await browser().post('/api/auth/register', { email: 'a@x.com', password: 'password123', timeZone: 'Mars/Base' })
+    await browser().post('/api/auth/register', { email: 'a@x.com', password: 'Blue-garden-42', timeZone: 'Mars/Base' })
     expect(fakes.profiles.get(fakes.users.get('a@x.com').id).time_zone).toBe('UTC')
   })
 
   it('refuses an email that already has an account and points to sign-in', async () => {
-    await browser().post('/api/auth/register', { email: 'a@x.com', password: 'password123' })
-    const again = await browser().post('/api/auth/register', { email: 'a@x.com', password: 'different99' })
+    await browser().post('/api/auth/register', { email: 'a@x.com', password: 'Blue-garden-42' })
+    const again = await browser().post('/api/auth/register', { email: 'a@x.com', password: 'Different-tree-99' })
     expect(again.status).toBe(409)
     expect(again.data.message).toMatch(/sign in/i)
   })
 
   it('cannot sign in before confirming, and resend always answers ok', async () => {
     const b = browser()
-    await b.post('/api/auth/register', { email: 'a@x.com', password: 'password123' })
-    const res = await b.post('/api/auth/login', { email: 'a@x.com', password: 'password123' })
+    await b.post('/api/auth/register', { email: 'a@x.com', password: 'Blue-garden-42' })
+    const res = await b.post('/api/auth/login', { email: 'a@x.com', password: 'Blue-garden-42' })
     expect(res.status).toBe(403)
     expect(res.data.error).toBe('email_not_confirmed')
     expect((await b.post('/api/auth/resend', { email: 'a@x.com' })).status).toBe(200)
@@ -233,7 +239,7 @@ describe('register (S3.2)', () => {
 
   it('confirming the email link signs the user in; a used link fails', async () => {
     const b = browser()
-    await b.post('/api/auth/register', { email: 'a@x.com', password: 'password123' })
+    await b.post('/api/auth/register', { email: 'a@x.com', password: 'Blue-garden-42' })
     const res = await b.post('/api/auth/confirm', { tokenHash: 'confirm-a@x.com', type: 'email' })
     expect(res.status).toBe(200)
     expect((await b.get('/api/auth/session')).data).toMatchObject({ signedIn: true, email: 'a@x.com' })
@@ -245,7 +251,7 @@ describe('register (S3.2)', () => {
 describe('sign in and out (S3.3)', () => {
   it('gives the identical message for an unknown email and a wrong password', async () => {
     await confirmedUser('a@x.com')
-    const unknown = await browser().post('/api/auth/login', { email: 'b@x.com', password: 'password123' })
+    const unknown = await browser().post('/api/auth/login', { email: 'b@x.com', password: 'Blue-garden-42' })
     const wrong = await browser().post('/api/auth/login', { email: 'a@x.com', password: 'wrongpass1' })
     expect(unknown.status).toBe(401)
     expect(wrong.status).toBe(401)
@@ -254,7 +260,7 @@ describe('sign in and out (S3.3)', () => {
 
   it('sets an HttpOnly, SameSite=Lax cookie and never returns a token in the body', async () => {
     await confirmedUser('a@x.com')
-    const res = await browser().post('/api/auth/login', { email: 'a@x.com', password: 'password123' })
+    const res = await browser().post('/api/auth/login', { email: 'a@x.com', password: 'Blue-garden-42' })
     expect(res.status).toBe(200)
     expect(res.setCookie).toMatch(/HttpOnly/i)
     expect(res.setCookie).toMatch(/SameSite=Lax/i)
@@ -281,22 +287,23 @@ describe('password reset (S3.4)', () => {
   })
 
   it('the link sets a new password, the old one fails, and other devices are signed out', async () => {
-    const laptop = await confirmedUser('a@x.com', 'oldpassword1')
+    const laptop = await confirmedUser('a@x.com', 'Old-river-stone-7')
     const phone = browser()
     await phone.post('/api/auth/reset', { email: 'a@x.com' })
     expect((await phone.post('/api/auth/confirm', { tokenHash: 'reset-a@x.com', type: 'recovery' })).status).toBe(200)
-    expect((await phone.post('/api/auth/new-password', { password: 'newpassword1' })).status).toBe(200)
+    expect((await phone.post('/api/auth/new-password', { password: 'New-maple-cloud-9' })).status).toBe(200)
 
     expect((await laptop.get('/api/profile')).status).toBe(401)
     expect((await phone.get('/api/profile')).status).toBe(200)
-    expect((await browser().post('/api/auth/login', { email: 'a@x.com', password: 'oldpassword1' })).status).toBe(401)
-    expect((await browser().post('/api/auth/login', { email: 'a@x.com', password: 'newpassword1' })).status).toBe(200)
+    expect((await browser().post('/api/auth/login', { email: 'a@x.com', password: 'Old-river-stone-7' })).status).toBe(401)
+    expect((await browser().post('/api/auth/login', { email: 'a@x.com', password: 'New-maple-cloud-9' })).status).toBe(200)
   })
 
   it('setting a new password needs a session and a valid password', async () => {
-    expect((await browser().post('/api/auth/new-password', { password: 'newpassword1' })).status).toBe(401)
+    expect((await browser().post('/api/auth/new-password', { password: 'New-maple-cloud-9' })).status).toBe(401)
     const b = await confirmedUser('a@x.com')
     expect((await b.post('/api/auth/new-password', { password: 'short' })).status).toBe(400)
+    expect((await b.post('/api/auth/new-password', { password: 'Leaked-but-long-1' })).status).toBe(400)
   })
 })
 
@@ -307,7 +314,7 @@ describe('delete account (S3.6)', () => {
     expect((await b.del('/api/account', {})).status).toBe(400)
     expect(fakes.users.has('a@x.com')).toBe(true)
 
-    const res = await b.del('/api/account', { confirm: 'DELETE' })
+    const res = await b.del('/api/account', { confirm: 'DELETE', password: 'Blue-garden-42' })
     expect(res.status).toBe(200)
     expect(fakes.users.has('a@x.com')).toBe(false)
     expect(fakes.profiles.has(id)).toBe(false)
@@ -315,14 +322,14 @@ describe('delete account (S3.6)', () => {
   })
 
   it('a guest cannot delete anything', async () => {
-    expect((await browser().del('/api/account', { confirm: 'DELETE' })).status).toBe(401)
+    expect((await browser().del('/api/account', { confirm: 'DELETE', password: 'Blue-garden-42' })).status).toBe(401)
   })
 })
 
 describe('two users (NFR5, route layer)', () => {
   it('each user only ever sees and changes their own profile', async () => {
-    const a = await confirmedUser('a@x.com', 'password123', 'Europe/London')
-    const b = await confirmedUser('b@x.com', 'password123', 'Asia/Tokyo')
+    const a = await confirmedUser('a@x.com', 'Blue-garden-42', 'Europe/London')
+    const b = await confirmedUser('b@x.com', 'Blue-garden-42', 'Asia/Tokyo')
     const bId = fakes.users.get('b@x.com').id
 
     expect((await a.get('/api/profile')).data).toMatchObject({ email: 'a@x.com', timeZone: 'Europe/London' })
@@ -334,7 +341,7 @@ describe('two users (NFR5, route layer)', () => {
 
     // A cannot reach B's data through the admin route or delete B.
     expect((await a.get(`/api/admin/users/${bId}`)).status).toBe(403)
-    await a.del('/api/account', { confirm: 'DELETE', userId: bId })
+    await a.del('/api/account', { confirm: 'DELETE', password: 'Blue-garden-42', userId: bId })
     expect(fakes.users.has('b@x.com')).toBe(true)
   })
 })
@@ -363,14 +370,14 @@ describe('admin (NFR5, NFR9)', () => {
 describe('request safety', () => {
   it('blocks changes coming from another website (CSRF)', async () => {
     const b = await confirmedUser('a@x.com')
-    const res = await b.del('/api/account', { confirm: 'DELETE' })
+    const res = await b.del('/api/account', { confirm: 'DELETE', password: 'Blue-garden-42' })
     expect(res.status).toBe(200) // same-origin (no Origin header) works
 
     const c = await confirmedUser('c@x.com')
     const evil = await fetch(`${base}/api/account`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', Cookie: c.cookie, Origin: 'https://evil.example' },
-      body: JSON.stringify({ confirm: 'DELETE' }),
+      body: JSON.stringify({ confirm: 'DELETE', password: 'Blue-garden-42' }),
     })
     expect(evil.status).toBe(403)
     expect(fakes.users.has('c@x.com')).toBe(true)
@@ -393,5 +400,77 @@ describe('request safety', () => {
 
   it('unknown /api paths return JSON 404', async () => {
     expect((await browser().get('/api/nope')).status).toBe(404)
+  })
+})
+
+describe('password rules on the server (NIST-style)', () => {
+  it('refuses common, patterned, email-based and breached passwords', async () => {
+    const tries = {
+      'Password2024!': 'common',
+      '12345678': 'common',
+      aaaaaaaa: 'repeated',
+      abcdefgh: 'sequence',
+      'Nadia-2024x': 'email',
+      'Leaked-but-long-1': 'breach',
+    }
+    for (const password of Object.keys(tries)) {
+      const res = await browser().post('/api/auth/register', { email: 'nadia@x.com', password })
+      expect(res.status, password).toBe(400)
+      expect(res.data.error).toBe('invalid_password')
+    }
+    expect(fakes.users.size).toBe(0)
+    const good = await browser().post('/api/auth/register', { email: 'nadia@x.com', password: 'Blue-garden-42' })
+    expect(good.status).toBe(201)
+  })
+})
+
+describe('rate limits', () => {
+  it('slows down repeated wrong passwords for one email, with the same answer for unknown emails', async () => {
+    await confirmedUser('a@x.com')
+    for (let i = 0; i < 5; i++) {
+      expect((await browser().post('/api/auth/login', { email: 'a@x.com', password: `Wrong-${i}-xx` })).status).toBe(401)
+      expect((await browser().post('/api/auth/login', { email: 'ghost@x.com', password: `Wrong-${i}-xx` })).status).toBe(401)
+    }
+    await browser().post('/api/auth/login', { email: 'a@x.com', password: 'Wrong-6-xx' })
+    await browser().post('/api/auth/login', { email: 'ghost@x.com', password: 'Wrong-6-xx' })
+    const known = await browser().post('/api/auth/login', { email: 'a@x.com', password: 'Blue-garden-42' })
+    const unknown = await browser().post('/api/auth/login', { email: 'ghost@x.com', password: 'Blue-garden-42' })
+    expect(known.status).toBe(429) // even the right password waits
+    expect(unknown.status).toBe(429)
+    expect(known.data).toEqual(unknown.data)
+    // Another email is not affected.
+    await confirmedUser('b@x.com')
+    expect((await browser().post('/api/auth/login', { email: 'b@x.com', password: 'Blue-garden-42' })).status).toBe(200)
+  })
+
+  it('limits reset emails per address and says so with Retry-After', async () => {
+    for (let i = 0; i < 3; i++) {
+      expect((await browser().post('/api/auth/reset', { email: 'a@x.com' })).status).toBe(200)
+    }
+    const res = await fetch(`${base}/api/auth/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'a@x.com' }),
+    })
+    expect(res.status).toBe(429)
+    expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0)
+  })
+
+  it('limits account creation per device', async () => {
+    for (let i = 0; i < 10; i++) {
+      await browser().post('/api/auth/register', { email: `u${i}@x.com`, password: 'Blue-garden-42' })
+    }
+    expect((await browser().post('/api/auth/register', { email: 'u99@x.com', password: 'Blue-garden-42' })).status).toBe(429)
+  })
+})
+
+describe('delete needs the password again', () => {
+  it('a wrong password removes nothing', async () => {
+    const b = await confirmedUser('a@x.com')
+    const res = await b.del('/api/account', { confirm: 'DELETE', password: 'Not-my-password-1' })
+    expect(res.status).toBe(401)
+    expect(fakes.users.has('a@x.com')).toBe(true)
+    expect((await b.del('/api/account', { confirm: 'DELETE' })).status).toBe(401)
+    expect(fakes.users.has('a@x.com')).toBe(true)
   })
 })

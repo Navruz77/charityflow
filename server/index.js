@@ -3,8 +3,9 @@
 import { createApp } from './app.js'
 import { authClient } from './supabase/authClient.js'
 import { dbClient } from './supabase/dbClient.js'
+import { breachChecker } from './auth/breachCheck.js'
 
-const app = createApp({ auth: authClient, db: dbClient })
+const app = createApp({ auth: authClient, db: dbClient, breach: breachChecker })
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {

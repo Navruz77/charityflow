@@ -69,7 +69,7 @@ export default function RegisterPage() {
         calculator without one.
       </p>
       <EmailField value={email} onChange={setEmail} />
-      <PasswordField value={password} onChange={setPassword} isNew />
+      <PasswordField value={password} onChange={setPassword} isNew email={email} />
       <FormMessage kind="error">
         {error}
         {emailTaken && (

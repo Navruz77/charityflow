@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { useSession } from '../hooks/useSession.jsx'
-import { FormMessage, WakeNote } from '../components/AuthFields.jsx'
+import { FormMessage, PasswordField, WakeNote } from '../components/AuthFields.jsx'
 
 const CONFIRM_WORD = 'DELETE' // must match the server (server/routes/account.js)
 
@@ -11,6 +11,7 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [typed, setTyped] = useState('')
+  const [password, setPassword] = useState('')
   const [deleted, setDeleted] = useState(false)
 
   async function signOut() {
@@ -25,9 +26,10 @@ export default function AccountPage() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await api('DELETE', '/api/account', { confirm: typed })
+    const res = await api('DELETE', '/api/account', { confirm: typed, password })
     setBusy(false)
     if (!res.ok) {
+      setPassword('')
       setError(res.data.message || 'Could not delete the account. Nothing was removed.')
       return
     }
@@ -96,8 +98,9 @@ export default function AccountPage() {
             onChange={(e) => setTyped(e.target.value)}
           />
         </div>
+        <PasswordField value={password} onChange={setPassword} id="delete-password" label="Your password" />
         <FormMessage kind="error">{error}</FormMessage>
-        <button type="submit" className="btn btn-danger" disabled={busy || typed !== CONFIRM_WORD}>
+        <button type="submit" className="btn btn-danger" disabled={busy || typed !== CONFIRM_WORD || !password}>
           {busy ? 'Deleting…' : 'Delete my account forever'}
         </button>
         <WakeNote busy={busy} />

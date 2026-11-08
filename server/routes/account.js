@@ -3,12 +3,13 @@
 // takes a user id from the request body or query.
 import express from 'express'
 import { clearSessionCookie, requireUser } from '../auth/session.js'
-import { cleanTimeZone, isUuid } from '../auth/validate.js'
+import { cleanTimeZone, isUuid, normalizeEmail } from '../auth/validate.js'
+import { tooMany } from '../auth/guards.js'
 
 // The exact word the user must type to delete their account (S3.6).
 export const DELETE_CONFIRM_WORD = 'DELETE'
 
-export function createAccountRouter({ auth, db }) {
+export function createAccountRouter({ auth, db, limits }) {
   const router = express.Router()
   const signedIn = requireUser(auth)
 
@@ -42,8 +43,10 @@ export function createAccountRouter({ auth, db }) {
     res.json({ ok: true })
   })
 
-  // DELETE /api/account { confirm: 'DELETE' } — removes the sign-in record
-  // with the secret key; "on delete cascade" removes every row (S3.6).
+  // DELETE /api/account { confirm: 'DELETE', password } — removes the
+  // sign-in record with the secret key; "on delete cascade" removes every
+  // row (S3.6). The password is asked again so someone using a device that
+  // was left signed in can't wipe the account.
   router.delete('/api/account', signedIn, async (req, res) => {
     if (req.body?.confirm !== DELETE_CONFIRM_WORD) {
       return res.status(400).json({
@@ -51,6 +54,22 @@ export function createAccountRouter({ auth, db }) {
         message: `Type ${DELETE_CONFIRM_WORD} to confirm.`,
       })
     }
+    // Same failed-password limit as sign-in, so this can't be used to guess.
+    const email = normalizeEmail(req.user.email)
+    const wait = limits.loginEmail.check(email)
+    if (!wait.allowed) return tooMany(res, wait.retryAfterSec)
+    const password = req.body?.password
+    const check = typeof password === 'string' && password.length > 0 ? await auth.signIn(email, password) : { ok: false }
+    if (check.status === 429) return tooMany(res, 300)
+    if (!check.ok) {
+      if (check.status >= 500) {
+        return res.status(502).json({ error: 'auth_unavailable', message: 'Could not check your password. Nothing was removed.' })
+      }
+      limits.loginEmail.fail(email)
+      return res.status(401).json({ error: 'wrong_password', message: 'That password is not correct. Nothing was removed.' })
+    }
+    limits.loginEmail.succeed(email)
+
     const result = await auth.deleteUser(req.user.id)
     if (!result.ok) {
       console.error('deleteUser failed:', result.status)

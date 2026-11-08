@@ -218,6 +218,19 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 3 hardening — account security (2026-11-08).** The user asked for strong, non-default
+security on accounts and for that standard on all future code. Kept S3.2's 8-character minimum
+(user's choice) and added NIST SP 800-63B checks, shared by server and screens in
+`src/lib/passwordRules.js`: max 72 bytes, no common passwords (also with digits/symbols added),
+no repeats/sequences, not the email name; the server also rejects passwords found in known
+breaches (`server/auth/breachCheck.js`, Have I Been Pwned range API, only a 5-character hash
+prefix leaves the server, allowed on the other rules if that service is down). Rate limits
+(`server/auth/rateLimit.js`, in memory, per IP and per email): needed because Supabase sees
+every request as coming from our one server. Failed sign-ins per email back off 30s → 15 min
+after 5 free failures, never a permanent lockout, same answer for unknown emails. Deleting the
+account now needs the password again. Screens show the rules and a strength meter.
+106/106 tests, access test passes locally. Supabase dashboard settings to match: see the report.
+
 **Live URL moved to https://charityflow.onrender.com (2026-11-08).** The user moved hosting to
 the Render service `charityflow` (four keys as Environment Variables, Supabase Site URL and the
 `APP_URL` GitHub secret updated). The old `charityflow-app` service is to be deleted. Full

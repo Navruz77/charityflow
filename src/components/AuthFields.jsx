@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react'
+import {
+  PASSWORD_MIN,
+  passwordProblems,
+  passwordProblemText,
+  passwordStrength,
+  strengthLabels,
+} from '../lib/passwordRules.js'
 
 // Shared pieces for the account forms (A.16 to A.19).
 
@@ -20,16 +27,22 @@ export function EmailField({ value, onChange, id = 'email' }) {
 }
 
 // `isNew` switches the browser's password manager between "suggest a new
-// password" and "fill my saved password".
-export function PasswordField({ value, onChange, isNew = false, id = 'password', label = 'Password' }) {
+// password" and "fill my saved password", and shows the rules and a
+// strength meter while typing. `email` lets the rules spot a password made
+// from the email name. The server checks the same rules (plus known
+// breaches), so this is a guide, not the gatekeeper.
+export function PasswordField({ value, onChange, isNew = false, email = '', id = 'password', label = 'Password' }) {
   const [shown, setShown] = useState(false)
   const helperId = `${id}-helper`
+  const problems = isNew && value ? passwordProblems(value, email) : []
+  const strength = isNew ? passwordStrength(value, email) : 0
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
       {isNew && (
         <p className="helper" id={helperId}>
-          At least 8 characters.
+          At least {PASSWORD_MIN} characters. Several unrelated words together make a strong,
+          easy-to-remember password.
         </p>
       )}
       <input
@@ -37,12 +50,30 @@ export function PasswordField({ value, onChange, isNew = false, id = 'password',
         type={shown ? 'text' : 'password'}
         autoComplete={isNew ? 'new-password' : 'current-password'}
         required
-        minLength={isNew ? 8 : undefined}
+        minLength={isNew ? PASSWORD_MIN : undefined}
         maxLength={72}
-        aria-describedby={isNew ? helperId : undefined}
+        aria-describedby={isNew ? `${helperId} ${id}-strength` : undefined}
+        aria-invalid={problems.length > 0 ? true : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
+      {isNew && value && (
+        <div id={`${id}-strength`} aria-live="polite">
+          <div className="strength-meter" aria-hidden="true">
+            {[1, 2, 3, 4].map((n) => (
+              <span key={n} className={n <= strength ? `on s${strength}` : ''} />
+            ))}
+          </div>
+          <p className="helper">
+            Strength: <strong>{strengthLabels[strength]}</strong>
+          </p>
+          {problems.map((p) => (
+            <p key={p} className="field-error">
+              {passwordProblemText[p]}
+            </p>
+          ))}
+        </div>
+      )}
       <label className="checkbox-field">
         <input type="checkbox" checked={shown} onChange={(e) => setShown(e.target.checked)} />
         Show password

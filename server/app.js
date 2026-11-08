@@ -6,11 +6,14 @@ import express from 'express'
 import { pricesRouter } from './routes/prices.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createAccountRouter } from './routes/account.js'
+import { createAuthLimits } from './auth/rateLimit.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(__dirname, '..', 'dist')
 
-export function createApp({ auth, db }) {
+// `breach` checks passwords against known leaks; `limits` holds the rate
+// limits (a fresh set per app, so each test starts clean).
+export function createApp({ auth, db, breach, limits = createAuthLimits() }) {
   const app = express()
   app.disable('x-powered-by') // don't advertise the framework/version
   // Render puts a proxy in front of us. This makes req.secure true for
@@ -58,8 +61,8 @@ export function createApp({ auth, db }) {
   })
 
   app.use(pricesRouter)
-  app.use(createAuthRouter({ auth, db }))
-  app.use(createAccountRouter({ auth, db }))
+  app.use(createAuthRouter({ auth, db, breach, limits }))
+  app.use(createAccountRouter({ auth, db, limits }))
 
   // Unknown /api paths get JSON, not the website.
   app.use('/api', (req, res) => {
