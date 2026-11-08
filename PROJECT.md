@@ -102,7 +102,7 @@ confirm field names and units.
 Done when: cache test (two calls within 8 hours, one provider request), both failure drills,
 and the 25-hour test behave as described.
 
-**M4 Accounts.** Stories S3.2, S3.3, S3.4, S3.6. Routes under `/api/auth` call Supabase Auth from
+**M4 Accounts: BUILT, awaiting live setup and tests** (see Status). Stories S3.2, S3.3, S3.4, S3.6. Routes under `/api/auth` call Supabase Auth from
 the server; HttpOnly session cookie. Email + password (min 8), confirmation, resend. Same message
 for wrong email and wrong password. Reset link sets a new password and signs out other devices.
 `DELETE /api/account` (explicit confirmation) removes the sign-in record with the secret key and
@@ -217,6 +217,40 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 3 follow-up — M4 access test passed live (2026-11-07).** The user ran
+`002_accounts.sql` (all 8 tables present), set the Site URL and both email templates, and added
+`SUPABASE_PUBLISHABLE_KEY` to local `.env`. `npm run test:access` against the real Supabase:
+61/61 checks passed (route layer, database rules alone on all 6 user tables, server-only tables,
+admin log = exactly one row, delete leaves no row and removes the sign-in record, old cookies die
+after delete and sign-out). Test users cleaned up. Still open for M4: real-inbox phone walkthrough
+(register, confirm, sign in/out, reset, delete; link opened on a different device) after deploy;
+adding the four admins once teammates register.
+
+**Step 3 — M4 accounts, built (2026-11-07).** Server: `server/app.js`
+(app factory; `index.js` just starts it), `server/supabase/` (`authClient.js` = Supabase Auth over
+REST, `dbClient.js` = account tables, every function filtered by the session's user id),
+`server/auth/session.js` (HttpOnly `cf_session` cookie with the access + refresh token, re-checked
+with Supabase on every request, refreshed once when expired, cleared when revoked),
+`server/routes/auth.js` and `server/routes/account.js`. Routes: `POST /api/auth/register|login|
+logout|reset` (B.7) plus `resend`, `confirm` (email link → session), `new-password` (then signs
+out other devices) and `GET /api/auth/session`; `GET|PUT /api/profile`, `DELETE /api/account`
+(body `{confirm:"DELETE"}`), `GET /api/admin/users/:id` (logged) and `GET /api/admin/stats`.
+CSRF: SameSite=Lax cookie + Origin check on every non-GET `/api` call. SQL:
+`supabase/002_accounts.sql` creates every B.1 table with RLS, own-row policies, `on delete
+cascade`, explicit grants (auto-expose is off), `admin_read_user_data` and `admin_stats`
+(execute revoked from anon/authenticated). Choices not spelled out in the plan: email links
+land on `#/confirm?token_hash=…&type=…` and need a button tap (stops mail scanners using up the
+link, works in a different browser — plan M4 unknown 2); gifts can only reference their own
+owner's goal (composite FK); `goal_label` is filled by server code in M7, not a trigger.
+Screens: `#/register`, `#/signin`, `#/reset`, `#/confirm`, `#/account`, and `#/reminders` /
+`#/planner` placeholders that offer registration to guests (S3.1). Status page shows counts to
+admins. Tests: `server/routes/accounts.test.js` (20, in-memory fake Supabase). Live check:
+`npm run test:access` (`scripts/access-test.js`) runs the two-user test through the routes AND
+the database rules alone, the admin-log check, and delete-leaves-no-rows. 92/92 tests, build,
+lint clean. **Needs the user before it is live:** run `002_accounts.sql`; set the two email
+templates and Site URL (see the M4 report); add `SUPABASE_PUBLISHABLE_KEY` to local `.env` for
+the access test; then run it, register/confirm/reset/delete from a real inbox on a phone.
 
 **Step 2 closed — M3 fully verified (2026-11-07).** `price-health.yml` run manually: passed
 clean (prices 1 hour old, exit 0). Manual browser walkthrough on the live site against 4 test

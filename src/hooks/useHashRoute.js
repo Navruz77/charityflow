@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react'
 
-// Minimal hash-based route reader. The site only has a couple of routes,
-// so this avoids adding a router dependency.
+// Minimal hash-based route reader. The site only has a few routes, so this
+// avoids adding a router dependency. A hash like "#/confirm?type=email" is
+// split into the route ("/confirm") and its query (read with hashParams()).
 function readHash() {
-  return window.location.hash.replace(/^#/, '') || '/'
+  const hash = window.location.hash.replace(/^#/, '')
+  return hash.split('?')[0] || '/'
+}
+
+// The ?a=b part after the route, e.g. the token in an email link.
+export function hashParams() {
+  const hash = window.location.hash
+  const q = hash.indexOf('?')
+  return new URLSearchParams(q === -1 ? '' : hash.slice(q + 1))
 }
 
 export function useHashRoute() {

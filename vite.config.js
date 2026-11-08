@@ -6,5 +6,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   base: '/',
   plugins: [react()],
+  // In `npm run dev`, send /api calls to the Express server (npm start).
+  server: { proxy: { '/api': 'http://localhost:3000' } },
   test: { environment: 'node', include: ['src/**/*.test.js', 'server/**/*.test.js'] },
 })

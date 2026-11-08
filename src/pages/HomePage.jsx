@@ -16,6 +16,14 @@ export default function HomePage() {
         </div>
       </div>
 
+      <div className="card">
+        <h2>With a free account</h2>
+        <p className="muted">
+          Save calculations, get <a href="#/reminders">reminders</a> and plan your giving with the{' '}
+          <a href="#/planner">giving planner</a>. An account only needs an email and a password.
+        </p>
+      </div>
+
       <Definitions />
     </>
   )
