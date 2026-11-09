@@ -5,9 +5,14 @@ on:
     - cron: '0 6,18 * * *' # twice a day
   workflow_dispatch:
 
+# Least privilege: this workflow only calls our public /api/prices; it
+# needs no access to the repository at all.
+permissions: {}
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Call GET /api/prices and check freshness
         run: |

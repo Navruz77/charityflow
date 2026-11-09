@@ -13,8 +13,8 @@ on:
         required: false
         default: ''
 
-permissions:
-  contents: read
+# Least privilege: the job only calls our server; it needs no repo access.
+permissions: {}
 
 jobs:
   run:

@@ -1,0 +1,8 @@
+# Proposes a pull request when a pinned GitHub Action has a new release,
+# so the exact-commit pins in .github/workflows stay current.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

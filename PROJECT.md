@@ -218,6 +218,15 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**CI hardening (2026-11-08).** Repo stays public (checked: no secret in any of the 27 commits,
+`.env` never committed). Workflows: least-privilege `permissions` (`test.yml` contents: read;
+`price-health.yml` and `reminders.yml` none), `timeout-minutes` on every job, actions pinned to
+exact commits (`checkout` and `setup-node` v4.4.0) with `persist-credentials: false`, and
+`.github/dependabot.yml` proposes weekly updates for the pins. For the user in GitHub settings:
+secret scanning + push protection, branch protection on `main`. Possible Final Release change
+(not done, it would change the approved stack): Supabase `pg_cron` + `pg_net` calling
+`POST /api/jobs/reminders` instead of the GitHub schedule.
+
 **Step 5 — M6 reminders, built (2026-11-08).** No SQL needed (tables from M4). Pure logic in
 `server/reminders/decideReminders.js` (local date/hour/weekday and Hijri month/day per user time
 zone via `src/lib/hijriParts.js`, the same Intl Umm al-Qura method as the screens; nothing before
