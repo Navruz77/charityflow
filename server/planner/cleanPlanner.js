@@ -1,11 +1,10 @@
 // Checks goal and gift input for the planner routes (M7). Builds a clean
 // copy from an allowlist; unknown fields are dropped. Text is stored as
 // plain text and always shown as plain text (React escapes it).
-export const MAX_AMOUNT_CENTS = 1e12 // $10 billion: far above any real gift
-const NAME_MAX = 100
-const RECIPIENT_MAX = 100
-const NOTE_MAX = 500
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+import { GIFT_DATE_MIN, isValidIsoDate, MAX_PLANNER_CENTS, NAME_MAX, NOTE_MAX, RECIPIENT_MAX } from '../../src/lib/inputRules.js'
+
+// Limits are shared with the screens (src/lib/inputRules.js).
+export const MAX_AMOUNT_CENTS = MAX_PLANNER_CENTS // $10 billion: far above any real gift
 // Control characters (except normal spaces) are removed from text.
 // eslint-disable-next-line no-control-regex -- matching them is the point
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
@@ -31,7 +30,7 @@ function text(value, field, max, { required = false } = {}) {
 
 function amount(value) {
   if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_AMOUNT_CENTS) {
-    throw new Invalid('amountCents', 'Enter an amount above $0.00.')
+    throw new Invalid('amountCents', 'Enter an amount from $0.01 to $10,000,000,000.00.')
   }
   return value
 }
@@ -39,10 +38,8 @@ function amount(value) {
 // A gift date: a real calendar date, from 2000 up to one day after the
 // server's today (a gift can't be in the future; one day covers time zones).
 function giftDate(value, now) {
-  if (typeof value !== 'string' || !ISO_DATE.test(value)) throw new Invalid('givenOn', 'Enter a date.')
-  const t = Date.parse(`${value}T00:00:00Z`)
-  if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== value) throw new Invalid('givenOn', 'Enter a real date.')
-  if (value < '2000-01-01' || t > now + 24 * 60 * 60 * 1000) throw new Invalid('givenOn', 'The date cannot be in the future.')
+  if (!isValidIsoDate(value, { min: GIFT_DATE_MIN })) throw new Invalid('givenOn', 'Enter a real date from 2000 onward.')
+  if (Date.parse(`${value}T00:00:00Z`) > now + 24 * 60 * 60 * 1000) throw new Invalid('givenOn', 'The date cannot be in the future.')
   return value
 }
 

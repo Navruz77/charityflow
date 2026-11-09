@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { calculateZakat } from '../engine/calculateZakat.js'
 import { dollarsTextToCents, dollarsTextToCentsOrNull, percentTextToNumber } from '../lib/money.js'
+import { gramsTextToNumber, isValidIsoDate } from '../lib/inputRules.js'
 
 export const emptyGem = () => ({ valueCents: '', purpose: 'personal' })
 export const emptySecurity = () => ({ valueCents: '', purpose: 'longTerm', countInFull: false, zakatableSharePct: '' })
@@ -71,6 +72,26 @@ function moneyOrNull(path, text, errors) {
   return cents
 }
 
+// Grams as typed -> a number (blank = 0); bad text is an error, not a guess.
+function grams(path, text, errors) {
+  const n = gramsTextToNumber(text)
+  if (n === null) {
+    errors.push({ field: path, code: 'notANumber' })
+    return 0
+  }
+  return n
+}
+
+// The optional Zakat date: blank, or a real date from 1900 to 2200.
+function zakatDate(text, errors) {
+  if (!text) return null
+  if (!isValidIsoDate(text)) {
+    errors.push({ field: 'zakatDate', code: 'notADate' })
+    return null
+  }
+  return text
+}
+
 function percent(path, text, errors, fallback) {
   if (text === '' || text === undefined) return fallback
   const n = percentTextToNumber(text)
@@ -89,8 +110,8 @@ export function buildEngineInputs(form) {
   const inputs = {
     cashCents: money('cashCents', form.cashCents, localErrors),
     savingsCents: money('savingsCents', form.savingsCents, localErrors),
-    gold: { grams: form.gold.grams, valueCents: moneyOrNull('gold.valueCents', form.gold.valueCents, localErrors) },
-    silver: { grams: form.silver.grams, valueCents: moneyOrNull('silver.valueCents', form.silver.valueCents, localErrors) },
+    gold: { grams: grams('gold.grams', form.gold.grams, localErrors), valueCents: moneyOrNull('gold.valueCents', form.gold.valueCents, localErrors) },
+    silver: { grams: grams('silver.grams', form.silver.grams, localErrors), valueCents: moneyOrNull('silver.valueCents', form.silver.valueCents, localErrors) },
     gems: form.gems.map((g, i) => ({
       purpose: g.purpose,
       valueCents: money(`gems[${i}].valueCents`, g.valueCents, localErrors),
@@ -131,7 +152,7 @@ export function buildEngineInputs(form) {
     },
     nisab: form.nisab,
     heldOneLunarYear: form.heldOneLunarYear,
-    zakatDate: form.zakatDate || null,
+    zakatDate: zakatDate(form.zakatDate, localErrors),
   }
   return { inputs, localErrors }
 }

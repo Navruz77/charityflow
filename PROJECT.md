@@ -218,6 +218,24 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Input validation pass (2026-11-09).** User asked for sanitization and validation on every form.
+One set of rules in `src/lib/inputRules.js`, used by the screens and the server: money boxes
+accept only digits, commas and one point with 2 decimals (13 whole-dollar digits max), grams only
+digits and one point (4 decimals), percentages only 0 to 100 (a keystroke past 100 is refused),
+dates real and 1900 to 2200 (gifts 2000 to today), list items max 25, text lengths (name 100,
+recipient 100, note 500, email 254). Filtering happens as people type or paste
+(`MoneyField`, new `NumberField`), so letters, "$", "-", "e" and non-ASCII digits never get in.
+Bugs found and fixed: `dollarsTextToCents` used floating point and turned
+"99999999999999999999" into 1e22 (now whole-number math, capped, exact); invalid entries made
+"Calculate my Zakat" silently do nothing (the review screen now lists each problem with a Fix
+button); grams and percentage fields showed no error; error text exposed field paths like
+"securities[0].valueCents"; grams were passed to the engine as raw text (now parsed and
+checked first); no list cap in the browser (the 26th item could not be saved). Server limits now
+import the same constants. Tests 226/226 (new: input rules, and a hostile-input sweep sending
+wrong types, Infinity, nested objects, SQL- and path-like strings and bad ids to every write
+route: all 400, nothing written, plus a control case that is accepted). Headless Chrome 13/13
+with real keystrokes and paste.
+
 **Update banner instead of silent autoUpdate (2026-11-09).** After the M7 deploy the user saw
 the old "coming soon" planner: the service worker showed the cached version first and the new
 one only on a later load. With the user's agreement (a change from the plan's `autoUpdate`),

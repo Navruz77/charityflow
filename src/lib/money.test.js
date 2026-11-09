@@ -18,6 +18,24 @@ describe('dollarsTextToCents', () => {
     expect(dollarsTextToCents('-5')).toBeNull()
     expect(dollarsTextToCents('abc')).toBeNull()
     expect(dollarsTextToCents('1.234')).toBeNull()
+    expect(dollarsTextToCents('1e5')).toBeNull()
+    expect(dollarsTextToCents('$100')).toBeNull()
+    expect(dollarsTextToCents('.')).toBeNull()
+    expect(dollarsTextToCents('1,23')).toBeNull()
+  })
+
+  it('reads cents exactly, with no floating-point rounding', () => {
+    expect(dollarsTextToCents('0.29')).toBe(29)
+    expect(dollarsTextToCents('1.1')).toBe(110)
+    expect(dollarsTextToCents('.5')).toBe(50)
+    expect(dollarsTextToCents('12.')).toBe(1200)
+    expect(dollarsTextToCents('1,234,567.89')).toBe(123456789)
+  })
+
+  it('refuses amounts too large to stay exact', () => {
+    expect(dollarsTextToCents('9999999999999.99')).toBe(999999999999999)
+    expect(dollarsTextToCents('99999999999999')).toBeNull()
+    expect(dollarsTextToCents('99999999999999999999')).toBeNull()
   })
 })
 

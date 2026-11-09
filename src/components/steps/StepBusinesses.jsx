@@ -1,5 +1,7 @@
 import StepShell from '../StepShell.jsx'
 import MoneyField from '../MoneyField.jsx'
+import NumberField from '../NumberField.jsx'
+import { MAX_ITEMS_PER_LIST, cleanPercentText } from '../../lib/inputRules.js'
 import { helperText } from '../../content/helperText.js'
 import { emptyBusiness } from '../../hooks/useZakatForm.js'
 
@@ -16,17 +18,16 @@ export default function StepBusinesses({ step, total, form, setForm, errors, onB
       {form.businesses.map((b, i) => (
         <fieldset key={i} className="repeatable-item">
           <legend>Business {i + 1}</legend>
-          <div className="field">
-            <label htmlFor={`ownership-${i}`}>Your ownership %</label>
-            <p className="helper">{helperText.ownershipPct}</p>
-            <input
-              id={`ownership-${i}`}
-              type="text"
-              inputMode="decimal"
-              value={b.ownershipPct}
-              onChange={(e) => update(i, { ownershipPct: e.target.value })}
-            />
-          </div>
+          <NumberField
+            id={`ownership-${i}`}
+            name={`businesses[${i}].ownershipPct`}
+            label="Your ownership %"
+            helper={helperText.ownershipPct}
+            value={b.ownershipPct}
+            clean={cleanPercentText}
+            errors={errors}
+            onChange={(v) => update(i, { ownershipPct: v })}
+          />
           <MoneyField
             name={`businesses[${i}].cashCents`}
             label="Business cash"
@@ -66,9 +67,13 @@ export default function StepBusinesses({ step, total, form, setForm, errors, onB
           )}
         </fieldset>
       ))}
-      <button type="button" className="btn btn-secondary" onClick={add}>
-        Add another business
-      </button>
+      {form.businesses.length < MAX_ITEMS_PER_LIST ? (
+        <button type="button" className="btn btn-secondary" onClick={add}>
+          Add another business
+        </button>
+      ) : (
+        <p className="helper">You can add up to {MAX_ITEMS_PER_LIST}.</p>
+      )}
     </StepShell>
   )
 }

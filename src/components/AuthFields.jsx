@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EMAIL_MAX } from '../lib/inputRules.js'
 import {
   PASSWORD_MIN,
   passwordProblems,
@@ -18,6 +19,9 @@ export function EmailField({ value, onChange, id = 'email' }) {
         type="email"
         autoComplete="email"
         inputMode="email"
+        autoCapitalize="none"
+        spellCheck={false}
+        maxLength={EMAIL_MAX}
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}

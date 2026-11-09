@@ -2,16 +2,19 @@ import { useState } from 'react'
 import StepShell from '../StepShell.jsx'
 import { helperText } from '../../content/helperText.js'
 import { toGregorianDisplay, toHijriDisplay } from '../../lib/hijri.js'
+import { DATE_MAX, DATE_MIN, isValidIsoDate } from '../../lib/inputRules.js'
+import FieldError from '../FieldError.jsx'
 
 // Nisab and the one-lunar-year question have no default — Zakat cannot be
 // calculated without an explicit answer to both (PROJECT.md S1.9).
-export default function StepSettings({ step, total, form, setForm, onBack, onNext }) {
+export default function StepSettings({ step, total, form, setForm, errors = [], onBack, onNext }) {
   const [touched, setTouched] = useState(false)
   const nisabMissing = form.nisab !== 'gold' && form.nisab !== 'silver'
   const hawlMissing = typeof form.heldOneLunarYear !== 'boolean'
+  const dateBad = form.zakatDate !== '' && !isValidIsoDate(form.zakatDate)
 
   const handleNext = () => {
-    if (nisabMissing || hawlMissing) {
+    if (nisabMissing || hawlMissing || dateBad) {
       setTouched(true)
       return
     }
@@ -61,9 +64,14 @@ export default function StepSettings({ step, total, form, setForm, onBack, onNex
           <input
             id="zakatDate"
             type="date"
+            min={DATE_MIN}
+            max={DATE_MAX}
+            aria-invalid={dateBad}
             value={form.zakatDate}
             onChange={(e) => setForm({ ...form, zakatDate: e.target.value })}
           />
+          {dateBad && touched && <p className="field-error">Enter a real date between 1900 and 2200.</p>}
+          <FieldError errors={errors} field="zakatDate" />
           <p className="helper">
             {form.zakatDate ? 'Gregorian' : 'Today, Gregorian'}: {toGregorianDisplay(form.zakatDate)} — Hijri:{' '}
             {toHijriDisplay(form.zakatDate) ?? 'not available in this browser'}

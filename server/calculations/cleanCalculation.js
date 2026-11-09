@@ -7,12 +7,12 @@
 //     result is the server's own copy, so a saved row can't hold numbers the
 //     engine never produced.
 import { calculateZakat } from '../../src/engine/calculateZakat.js'
+import { isValidIsoDate, MAX_CENTS, MAX_ITEMS_PER_LIST as LIST_MAX } from '../../src/lib/inputRules.js'
 
 // Limits that keep one row small. Far above anything a real person enters.
-export const MAX_ITEMS_PER_LIST = 25
-const MAX_CENTS = 1e15 // $10 trillion, still an exact integer in JavaScript
+// (Shared with the screens in src/lib/inputRules.js.)
+export const MAX_ITEMS_PER_LIST = LIST_MAX
 const MAX_GRAMS = 1e9
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const OLDEST_SAVE = Date.parse('2026-01-01T00:00:00Z')
 const CLOCK_SKEW_MS = 5 * 60 * 1000
 
@@ -127,8 +127,9 @@ export function cleanInputs(raw) {
   }
 }
 
+// A real calendar date from 1900 to 2200 (same rule as the screens).
 function isoDate(v, field) {
-  if (typeof v !== 'string' || !ISO_DATE.test(v) || Number.isNaN(Date.parse(`${v}T00:00:00Z`))) throw new Invalid(field)
+  if (!isValidIsoDate(v)) throw new Invalid(field)
   return v
 }
 

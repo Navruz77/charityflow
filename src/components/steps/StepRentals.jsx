@@ -1,5 +1,6 @@
 import StepShell from '../StepShell.jsx'
 import MoneyField from '../MoneyField.jsx'
+import { MAX_ITEMS_PER_LIST } from '../../lib/inputRules.js'
 import { emptyRental } from '../../hooks/useZakatForm.js'
 
 export default function StepRentals({ step, total, form, setForm, errors, onBack, onNext }) {
@@ -36,9 +37,13 @@ export default function StepRentals({ step, total, form, setForm, errors, onBack
           )}
         </fieldset>
       ))}
-      <button type="button" className="btn btn-secondary" onClick={add}>
-        Add another property
-      </button>
+      {form.rentals.length < MAX_ITEMS_PER_LIST ? (
+        <button type="button" className="btn btn-secondary" onClick={add}>
+          Add another property
+        </button>
+      ) : (
+        <p className="helper">You can add up to {MAX_ITEMS_PER_LIST}.</p>
+      )}
     </StepShell>
   )
 }

@@ -5,6 +5,7 @@ import { REMINDER_TYPES, reminderText } from '../content/reminderText.js'
 import { HIJRI_MONTH_NAMES, hijriOfIsoDate } from '../lib/hijriParts.js'
 import { toGregorianDisplay, toHijriDisplay } from '../lib/hijri.js'
 import { FormMessage, WakeNote } from '../components/AuthFields.jsx'
+import { DATE_MAX, DATE_MIN, isValidIsoDate } from '../lib/inputRules.js'
 import { NeedsConnection } from '../components/Connection.jsx'
 import { notifyRemindersChanged } from '../hooks/useReminderCount.js'
 
@@ -150,7 +151,8 @@ function ZakatDateCard({ initial, onChange }) {
       className="card form-stack"
       onSubmit={(e) => {
         e.preventDefault()
-        if (value) save(value)
+        if (!isValidIsoDate(value)) return setError('Enter a real date between 1900 and 2200.')
+        save(value)
       }}
     >
       <h2>My Zakat date</h2>
@@ -165,7 +167,7 @@ function ZakatDateCard({ initial, onChange }) {
       )}
       <div className="field">
         <label htmlFor="account-zakat-date">{saved ? 'Change the date' : 'Zakat date'}</label>
-        <input id="account-zakat-date" type="date" value={value} onChange={(e) => setValue(e.target.value)} />
+        <input id="account-zakat-date" type="date" min={DATE_MIN} max={DATE_MAX} value={value} onChange={(e) => setValue(e.target.value)} />
         {value && <p className="helper">Hijri: {toHijriDisplay(value) ?? 'not available in this browser'}</p>}
       </div>
       <FormMessage kind="error">{error}</FormMessage>

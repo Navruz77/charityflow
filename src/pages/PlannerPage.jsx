@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { centsToDisplay, dollarsTextToCents } from '../lib/money.js'
+import { cleanMoneyText, GIFT_DATE_MIN, isValidIsoDate, MAX_PLANNER_CENTS, NAME_MAX, NOTE_MAX, RECIPIENT_MAX } from '../lib/inputRules.js'
 import { toGregorianDisplay } from '../lib/hijri.js'
 import { useSession } from '../hooks/useSession.jsx'
 import { goalProgress, periodLabel, todayIn } from '../planner/progress.js'
@@ -37,11 +38,12 @@ export default function PlannerPage() {
 // Integer cents -> "12.50" for an input box (no floating point).
 const centsToInput = (c) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, '0')}`
 
-// A dollar box's text -> cents above 0, or null.
+// A dollar box's text -> cents from $0.01 to the planner maximum, or null.
 function positiveCents(text) {
   const c = dollarsTextToCents(text)
-  return c !== null && c > 0 ? c : null
+  return c !== null && c > 0 && c <= MAX_PLANNER_CENTS ? c : null
 }
+const AMOUNT_HINT = 'Enter an amount from $0.01 to $10,000,000,000.00, like 50 or 50.00.'
 
 const errorText = (res, fallback) => (res.status === 0 ? 'This needs a connection. Your entries are still here.' : res.data?.message || fallback)
 
@@ -221,7 +223,7 @@ function GoalForm({ goal, onSaved, onCancel }) {
     setError(null)
     const amountCents = positiveCents(amount)
     if (!name.trim()) return setError('Give the goal a name.')
-    if (amountCents === null) return setError('Enter an amount above $0.00, like 50 or 50.00.')
+    if (amountCents === null) return setError(AMOUNT_HINT)
     setBusy(true)
     const body = { name, amountCents, period }
     const res = editing ? await api('PUT', `/api/goals/${encodeURIComponent(goal.id)}`, body) : await api('POST', '/api/goals', body)
@@ -240,11 +242,11 @@ function GoalForm({ goal, onSaved, onCancel }) {
       <h3>{editing ? 'Change goal' : 'Add a goal'}</h3>
       <div className="field">
         <label htmlFor={`${idp}-name`}>Name</label>
-        <input id={`${idp}-name`} type="text" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+        <input id={`${idp}-name`} type="text" maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor={`${idp}-amount`}>Amount (US dollars)</label>
-        <input id={`${idp}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <input id={`${idp}-amount`} type="text" inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(cleanMoneyText(e.target.value))} />
       </div>
       <div className="field">
         <label htmlFor={`${idp}-period`}>Every</label>
@@ -286,8 +288,8 @@ function GiftForm({ gift, goals, today, onSaved, onCancel, title }) {
     setError(null)
     setSaved(null)
     const amountCents = positiveCents(amount)
-    if (amountCents === null) return setError('Enter an amount above $0.00, like 20 or 20.00.')
-    if (!givenOn) return setError('Enter the date of the gift.')
+    if (amountCents === null) return setError(AMOUNT_HINT)
+    if (!isValidIsoDate(givenOn, { min: GIFT_DATE_MIN })) return setError('Enter a real date from 2000 onward.')
     if (givenOn > today) return setError('The date cannot be in the future.')
     setBusy(true)
     const body = { amountCents, givenOn, recipient, note, goalId: goalId || null }
@@ -308,11 +310,11 @@ function GiftForm({ gift, goals, today, onSaved, onCancel, title }) {
       <h2 className={editing ? 'h3-size' : undefined}>{title ?? 'Edit gift'}</h2>
       <div className="field">
         <label htmlFor={`${idp}-amount`}>Amount (US dollars)</label>
-        <input id={`${idp}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <input id={`${idp}-amount`} type="text" inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(cleanMoneyText(e.target.value))} />
       </div>
       <div className="field">
         <label htmlFor={`${idp}-date`}>Date</label>
-        <input id={`${idp}-date`} type="date" max={today} value={givenOn} onChange={(e) => setGivenOn(e.target.value)} />
+        <input id={`${idp}-date`} type="date" min={GIFT_DATE_MIN} max={today} value={givenOn} onChange={(e) => setGivenOn(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor={`${idp}-goal`}>Goal (optional)</label>
@@ -330,11 +332,11 @@ function GiftForm({ gift, goals, today, onSaved, onCancel, title }) {
       </div>
       <div className="field">
         <label htmlFor={`${idp}-recipient`}>Recipient (optional)</label>
-        <input id={`${idp}-recipient`} type="text" maxLength={100} value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+        <input id={`${idp}-recipient`} type="text" maxLength={RECIPIENT_MAX} value={recipient} onChange={(e) => setRecipient(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor={`${idp}-note`}>Note (optional)</label>
-        <textarea id={`${idp}-note`} maxLength={500} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea id={`${idp}-note`} maxLength={NOTE_MAX} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
       <FormMessage kind="error">{error}</FormMessage>
       <FormMessage>{saved}</FormMessage>

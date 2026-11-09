@@ -1,5 +1,7 @@
 import StepShell from '../StepShell.jsx'
 import MoneyField from '../MoneyField.jsx'
+import NumberField from '../NumberField.jsx'
+import { MAX_ITEMS_PER_LIST, cleanPercentText } from '../../lib/inputRules.js'
 import { helperText } from '../../content/helperText.js'
 import { emptyRetirement } from '../../hooks/useZakatForm.js'
 
@@ -34,17 +36,16 @@ export default function StepRetirement({ step, total, form, setForm, errors, onB
           </div>
           {r.method === 'annual' && (
             <>
-              <div className="field">
-                <label htmlFor={`retShare-${i}`}>Zakatable share % (optional, default 100%)</label>
-                <p className="helper">{helperText.retirementSharePct}</p>
-                <input
-                  id={`retShare-${i}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={r.zakatableSharePct}
-                  onChange={(e) => update(i, { zakatableSharePct: e.target.value })}
-                />
-              </div>
+              <NumberField
+                id={`retShare-${i}`}
+                name={`retirement[${i}].zakatableSharePct`}
+                label="Zakatable share % (optional, default 100%)"
+                helper={helperText.retirementSharePct}
+                value={r.zakatableSharePct}
+                clean={cleanPercentText}
+                errors={errors}
+                onChange={(v) => update(i, { zakatableSharePct: v })}
+              />
               <MoneyField
                 name={`retirement[${i}].penaltyTaxCents`}
                 label="Early withdrawal penalty or tax"
@@ -62,9 +63,13 @@ export default function StepRetirement({ step, total, form, setForm, errors, onB
           )}
         </fieldset>
       ))}
-      <button type="button" className="btn btn-secondary" onClick={add}>
-        Add another account
-      </button>
+      {form.retirement.length < MAX_ITEMS_PER_LIST ? (
+        <button type="button" className="btn btn-secondary" onClick={add}>
+          Add another account
+        </button>
+      ) : (
+        <p className="helper">You can add up to {MAX_ITEMS_PER_LIST}.</p>
+      )}
     </StepShell>
   )
 }

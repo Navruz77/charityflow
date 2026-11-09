@@ -111,6 +111,7 @@ export default function AccountPage() {
             type="text"
             autoComplete="off"
             autoCapitalize="characters"
+            maxLength={20}
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
           />

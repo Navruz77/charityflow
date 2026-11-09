@@ -6,6 +6,7 @@ import { clearSessionCookie, requireUser } from '../auth/session.js'
 import { cleanTimeZone, isUuid, normalizeEmail } from '../auth/validate.js'
 import { firstRefusal, tooMany } from '../auth/guards.js'
 import { hijriOfIsoDate } from '../../src/lib/hijriParts.js'
+import { isValidIsoDate } from '../../src/lib/inputRules.js'
 
 // The exact word the user must type to delete their account (S3.6).
 export const DELETE_CONFIRM_WORD = 'DELETE'
@@ -52,7 +53,7 @@ export function createAccountRouter({ auth, db, limits }) {
     }
     let zakat = null
     if (hasZakatDate && body.zakatDate !== null) {
-      const hijri = withinRange(body.zakatDate) ? hijriOfIsoDate(body.zakatDate) : null
+      const hijri = isValidIsoDate(body.zakatDate) ? hijriOfIsoDate(body.zakatDate) : null
       if (!hijri) return res.status(400).json({ error: 'invalid_zakat_date', message: 'Enter a real date.' })
       zakat = { date: body.zakatDate, hijriMonth: hijri.month, hijriDay: hijri.day }
     }
@@ -114,9 +115,4 @@ export function createAccountRouter({ auth, db, limits }) {
   })
 
   return router
-}
-
-// A Zakat date between 1900 and 2200: wide, but stops nonsense years.
-function withinRange(value) {
-  return typeof value === 'string' && /^(19|20|21)\d{2}-\d{2}-\d{2}$/.test(value) && value <= '2200-12-31'
 }

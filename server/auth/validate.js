@@ -1,8 +1,10 @@
 // Small input checks shared by the account routes.
 
 // Loose on purpose: Supabase does the real check. This only stops obvious junk.
+import { EMAIL_MAX } from '../../src/lib/inputRules.js'
+
 export function isEmail(value) {
-  return typeof value === 'string' && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  return typeof value === 'string' && value.length <= EMAIL_MAX && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
 export function normalizeEmail(value) {

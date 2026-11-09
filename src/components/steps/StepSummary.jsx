@@ -1,4 +1,5 @@
 import ProgressIndicator from '../ProgressIndicator.jsx'
+import { describeField, getErrorMessage } from '../../content/errorText.js'
 
 // Shows every entered value before calculating, with an "Edit" link back
 // to the step that owns it. Blank fields are shown as $0 so nothing looks
@@ -17,7 +18,7 @@ function Row({ label, value, onEdit }) {
   )
 }
 
-export default function StepSummary({ step, total, form, goToStep, onCalculate, calcError }) {
+export default function StepSummary({ step, total, form, goToStep, onCalculate, errors = [] }) {
   const dollar = (v) => (v ? `$${v}` : '')
 
   return (
@@ -40,7 +41,30 @@ export default function StepSummary({ step, total, form, goToStep, onCalculate, 
       <Row label="Debts due now" value={dollar(form.debts.dueNowCents)} onEdit={() => goToStep(9)} />
       <Row label="Nisab" value={form.nisab} onEdit={() => goToStep(10)} />
 
-      {calcError && <p className="field-error">{calcError}</p>}
+      {errors.length > 0 && (
+        <div className="notice notice-error" role="alert">
+          <p>
+            <strong>
+              {errors.length === 1 ? 'One entry needs' : `${errors.length} entries need`} fixing before calculating:
+            </strong>
+          </p>
+          <ul className="error-list">
+            {errors.map((e) => {
+              const { step: at, label } = describeField(e.field)
+              return (
+                <li key={e.field}>
+                  {label}: {getErrorMessage(e.field, e.code)}{' '}
+                  {at !== null && (
+                    <button type="button" className="btn btn-secondary btn-small" onClick={() => goToStep(at)}>
+                      Fix
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       <div className="btn-row" style={{ marginTop: 'var(--space-5)' }}>
         <button type="button" className="btn btn-secondary" onClick={() => goToStep(10)}>

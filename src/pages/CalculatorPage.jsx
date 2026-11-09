@@ -150,7 +150,7 @@ export default function CalculatorPage() {
           form={form}
           goToStep={goToStep}
           onCalculate={prices ? handleCalculate : undefined}
-          calcError={errors.find((e) => e.field === 'prices')?.message}
+          errors={errors}
         />
       </>
     )

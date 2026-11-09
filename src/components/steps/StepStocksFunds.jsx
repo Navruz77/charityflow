@@ -1,5 +1,7 @@
 import StepShell from '../StepShell.jsx'
 import MoneyField from '../MoneyField.jsx'
+import NumberField from '../NumberField.jsx'
+import { MAX_ITEMS_PER_LIST, cleanPercentText } from '../../lib/inputRules.js'
 import { helperText } from '../../content/helperText.js'
 import { emptySecurity } from '../../hooks/useZakatForm.js'
 
@@ -44,17 +46,16 @@ export default function StepStocksFunds({ step, total, form, setForm, errors, on
               </div>
               <p className="helper">{helperText.securityCountInFull}</p>
               {!s.countInFull && (
-                <div className="field">
-                  <label htmlFor={`secShare-${i}`}>Zakatable share % (optional, default 30%)</label>
-                  <p className="helper">{helperText.securitySharePct}</p>
-                  <input
-                    id={`secShare-${i}`}
-                    type="text"
-                    inputMode="decimal"
-                    value={s.zakatableSharePct}
-                    onChange={(e) => update(i, { zakatableSharePct: e.target.value })}
-                  />
-                </div>
+                <NumberField
+                  id={`secShare-${i}`}
+                  name={`securities[${i}].zakatableSharePct`}
+                  label="Zakatable share % (optional, default 30%)"
+                  helper={helperText.securitySharePct}
+                  value={s.zakatableSharePct}
+                  clean={cleanPercentText}
+                  errors={errors}
+                  onChange={(v) => update(i, { zakatableSharePct: v })}
+                />
               )}
             </>
           )}
@@ -65,9 +66,13 @@ export default function StepStocksFunds({ step, total, form, setForm, errors, on
           )}
         </fieldset>
       ))}
-      <button type="button" className="btn btn-secondary" onClick={add}>
-        Add another holding
-      </button>
+      {form.securities.length < MAX_ITEMS_PER_LIST ? (
+        <button type="button" className="btn btn-secondary" onClick={add}>
+          Add another holding
+        </button>
+      ) : (
+        <p className="helper">You can add up to {MAX_ITEMS_PER_LIST}.</p>
+      )}
     </StepShell>
   )
 }
