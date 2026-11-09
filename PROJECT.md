@@ -218,6 +218,15 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Step 4 follow-up — M5 manual tests passed locally (2026-11-08).** The user ran the laptop
+checklist in Chrome against `npm start`: guest save, reload keeps form/step/result, offline via
+DevTools (banner, calculation, device save, "Needs a connection"), transfer (no, then yes in a new
+tab), signed-in offline save, delete, 360 px layout, and the update test (rebuilt with a changed
+header while a form was half filled: new version appeared, entries kept — M5 unknown 1 closed).
+iPhone Safari over Wi-Fi (plain HTTP, so no service worker): guest save, reload restore, transfer
+and layout passed. Pushed to deploy. **Still to do on the live HTTPS site:** iPhone (Home Screen
+and Safari) and Android airplane-mode test, per the M5 "Proving it works" list.
+
 **Step 4 — M5 saving and offline, built (2026-11-08).** Server: `server/routes/calculations.js`
 (`GET|POST /api/calculations`, `DELETE /api/calculations/:id`, signed-in only, user id only from
 the session). `server/calculations/cleanCalculation.js` rebuilds every saved calculation from an
