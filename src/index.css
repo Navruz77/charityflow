@@ -488,3 +488,18 @@ a.btn {
 .h3-size {
   font-size: 1.1rem;
 }
+
+/* A new version is ready (src/components/UpdateBanner.jsx). */
+.update-banner {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.update-banner .btn-row {
+  justify-content: flex-start;
+}

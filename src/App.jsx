@@ -5,6 +5,7 @@ import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import { FirstVisitNote, OfflineBanner } from './components/Connection.jsx'
 import { requestPrices } from './lib/prices.js'
+import UpdateBanner from './components/UpdateBanner.jsx'
 
 export default function App() {
   const [route] = useHashRoute()
@@ -24,6 +25,7 @@ export default function App() {
     <>
       <Header route={route} />
       <OfflineBanner />
+      <UpdateBanner />
       <main className="app-shell">
         <FirstVisitNote />
         <Page />

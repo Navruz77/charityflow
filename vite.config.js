@@ -12,10 +12,12 @@ export default defineConfig({
     // that stores the app's files on the first visit, so later visits work
     // with no connection.
     VitePWA({
-      // A new version installs itself and reloads the page. The calculator
-      // keeps its half-filled form in sessionStorage, so nothing is lost.
-      registerType: 'autoUpdate',
-      injectRegister: 'script-defer',
+      // A new version downloads in the background, then waits: the app shows
+      // a "Reload" banner (src/components/UpdateBanner.jsx) and nothing
+      // reloads until the person taps it, so nothing being typed is lost.
+      // (Changed from the plan's autoUpdate with the user's agreement.)
+      registerType: 'prompt',
+      injectRegister: false, // UpdateBanner registers the service worker
       manifest: {
         name: 'CharityFlow',
         short_name: 'CharityFlow',

@@ -218,6 +218,18 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Update banner instead of silent autoUpdate (2026-11-09).** After the M7 deploy the user saw
+the old "coming soon" planner: the service worker showed the cached version first and the new
+one only on a later load. With the user's agreement (a change from the plan's `autoUpdate`),
+`vite.config.js` now uses `registerType: 'prompt'` and `src/components/UpdateBanner.jsx`
+registers the service worker, checks for a new version when the app comes back on screen (iPhone
+Home Screen apps resume rather than reload), on reconnect and hourly, and shows "A new version of
+CharityFlow is ready — Reload / Not now". Nothing reloads until the person taps Reload, so no
+typing is lost anywhere; ignored, the update starts once every tab is closed. Headless Chrome
+10/10 (banner appears, no self-reload, Not now, still waiting after a plain reload, Reload
+switches version, calculator draft survives). Devices on the previous version get this one after
+closing the app or all tabs once.
+
 **Step 6 — M7 Sadaqah planner, built (2026-11-09).** No SQL needed (tables from M4). Rules in
 `src/planner/progress.js` (pure, Vitest): calendar month/year periods; "today" and a goal's start
 day from the user's stored time zone; progress = given this period, remaining, met (exactly at
