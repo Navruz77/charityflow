@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { isValidFormState, useZakatForm } from '../hooks/useZakatForm.js'
 import { clearDraft, loadDraft, saveDraft } from '../lib/formDraft.js'
 import { usePrices } from '../hooks/usePrices.js'
+import { NO_CONNECTION_NO_PRICES } from '../lib/prices.js'
 import StepCashSavings from '../components/steps/StepCashSavings.jsx'
 import StepGoldSilver from '../components/steps/StepGoldSilver.jsx'
 import StepGems from '../components/steps/StepGems.jsx'
@@ -110,7 +111,8 @@ export default function CalculatorPage() {
               CharityFlow cannot work out the nisab or any weight-based value right now:{' '}
               {priceError ?? 'no price is available.'}
             </p>
-            <p className="helper">Please try again in a few minutes.</p>
+            {priceError !== NO_CONNECTION_NO_PRICES && <p className="helper">Please try again in a few minutes.</p>}
+            <p className="helper">Your entries are kept on this screen.</p>
           </div>
         )}
         {!pricesLoading && prices && stale && (

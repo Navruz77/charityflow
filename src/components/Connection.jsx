@@ -52,8 +52,8 @@ export function FirstVisitNote() {
         working offline on this device.
       </p>
       <p className="muted">
-        On iPhone, tap Share, then “Add to Home Screen”, so Safari keeps it available (Safari clears
-        sites you haven't opened for 7 days).
+        On iPhone, tap Share, then “Add to Home Screen”, and open it from the Home Screen once while
+        online. Safari clears sites you haven't opened for 7 days; the Home Screen app keeps it.
       </p>
       <button type="button" className="btn btn-secondary" onClick={dismiss}>
         Got it
