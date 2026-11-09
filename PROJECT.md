@@ -113,7 +113,7 @@ Done when: a two-user test cannot read, change or delete the other user's data t
 `/api` route or through the database rules alone; reset and delete flows pass; one admin read
 writes exactly one log row; the network panel shows only requests to our own address.
 
-**M5 Saving and offline: BUILT** — tests, live access test and headless-Chrome offline run pass locally; needs deploy + real-phone airplane-mode tests (see Status). Stories S4.1, S4.2, S3.5, S5.1 to S5.3. Guest: "Save on this device"
+**M5 Saving and offline: DONE** — live, iPhone airplane-mode test passed (see Status). Stories S4.1, S4.2, S3.5, S5.1 to S5.3. Guest: "Save on this device"
 to `localStorage`. Signed in: "Save to my account" posts to the server (`/api/calculations`);
 offline shows "needs a connection" and keeps the calculation on screen. After sign-in, offer to
 add guest saves (only on yes). `vite-plugin-pwa` precaches the app; prices network-first with
@@ -217,6 +217,20 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 4 closed — M5 DONE (2026-11-08).** First live iPhone airplane-mode test failed: the
+offline calculator said it could not work out the nisab, with the service worker's raw
+"no-response" error. Cause: prices were fetched only when the calculator opened, so a visit that
+stayed on Home stored none (and an iPhone Home Screen app may keep storage separate from Safari).
+Fix `56ff0b9`: `src/lib/prices.js` fetches and stores prices when the app opens on any page and on
+reconnect, shares one request with the calculator, and shows a plain offline message instead of
+browser/service-worker error text; the first-visit note tells iPhone users to open the Home
+Screen app once while online. 160/160 tests; headless Chrome reproduces the Home-only case and
+passes. Re-test on https://charityflow.onrender.com from a fresh Home Screen icon (opened once
+online, then airplane mode): calculation, device save, close and reopen, reconnect all passed.
+Not run: Android airplane-mode test (no Android phone yet) — do it before the demo if one is
+available. Outside M5 and still open from earlier: delete the old `charityflow-app` Render service,
+run Price health manually, add the four admins, fix the API Ninjas key.
 
 **Step 4 follow-up — M5 manual tests passed locally (2026-11-08).** The user ran the laptop
 checklist in Chrome against `npm start`: guest save, reload keeps form/step/result, offline via
