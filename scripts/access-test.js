@@ -162,6 +162,30 @@ async function main() {
     check("B cannot delete A's calculation", crossDel.status === 404 && (await countRows('calculations', idA)) === 1, `${crossDel.status}`)
     check('A deletes their own calculation', (await a.call('DELETE', `/api/calculations/${calcIdA}`)).status === 200 && (await countRows('calculations', idA)) === 0)
 
+    // ---- M7: goals and gifts through /api/goals and /api/gifts (S8.1, S8.2, NFR5)
+    console.log('\n-- /api/goals and /api/gifts --')
+    const goalRes = await a.call('POST', '/api/goals', { name: 'Access test goal', amountCents: 10000, period: 'monthly', user_id: idB })
+    const goalIdA = goalRes.data?.goal?.id
+    check('A creates a goal', goalRes.status === 201 && !!goalIdA, `${goalRes.status}`)
+    const giftRes = await a.call('POST', '/api/gifts', { amountCents: 2500, givenOn: '2026-11-05', recipient: 'Food bank', goalId: goalIdA })
+    const giftIdA = giftRes.data?.gift?.id
+    check('A logs a gift toward it', giftRes.status === 201 && !!giftIdA, `${giftRes.status}`)
+    check('the goal belongs to A even though the body named B', (await countRows('goals', idA)) === 1 && (await countRows('goals', idB)) === 0)
+    check("B's goal and gift lists are empty", (await b.call('GET', '/api/goals')).data?.goals?.length === 0 && (await b.call('GET', '/api/gifts')).data?.gifts?.length === 0)
+    check("B cannot change A's goal", (await b.call('PUT', `/api/goals/${goalIdA}`, { name: 'x', amountCents: 1, period: 'monthly' })).status === 404)
+    check("B cannot delete A's goal", (await b.call('DELETE', `/api/goals/${goalIdA}`)).status === 404 && (await countRows('goals', idA)) === 1)
+    check("B cannot change A's gift", (await b.call('PUT', `/api/gifts/${giftIdA}`, { amountCents: 1, givenOn: '2026-11-01' })).status === 404)
+    check("B cannot delete A's gift", (await b.call('DELETE', `/api/gifts/${giftIdA}`)).status === 404 && (await countRows('gifts', idA)) === 1)
+    check("B cannot log a gift against A's goal", (await b.call('POST', '/api/gifts', { amountCents: 1, givenOn: '2026-11-01', goalId: goalIdA })).status === 400 && (await countRows('gifts', idB)) === 0)
+    const removed = await a.call('DELETE', `/api/goals/${goalIdA}`)
+    const keptGift = (await asServer(`/rest/v1/gifts?id=eq.${giftIdA}&select=goal_id,goal_label,user_id`)).data?.[0]
+    check(
+      "removing A's goal keeps the gift, labelled, linked to no goal, still A's",
+      removed.status === 200 && keptGift?.goal_id === null && keptGift?.goal_label === 'Access test goal' && keptGift?.user_id === idA,
+      JSON.stringify(keptGift),
+    )
+    check('A deletes the gift', (await a.call('DELETE', `/api/gifts/${giftIdA}`)).status === 200 && (await countRows('gifts', idA)) === 0)
+
     // ---- give B a row in every table, as B (own token) where users may write
     const tokenA = (await http(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: PUBLISHABLE }, body: { email: emailA, password } })).data?.access_token
     const tokenB = (await http(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: PUBLISHABLE }, body: { email: emailB, password } })).data?.access_token

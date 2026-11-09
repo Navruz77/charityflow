@@ -9,6 +9,7 @@ import { createAccountRouter } from './routes/account.js'
 import { createCalculationsRouter } from './routes/calculations.js'
 import { createRemindersRouter } from './routes/reminders.js'
 import { createJobsRouter } from './routes/jobs.js'
+import { createPlannerRouter } from './routes/planner.js'
 import { createAuthLimits } from './auth/rateLimit.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -70,6 +71,7 @@ export function createApp({ auth, db, breach, mailer, limits = createAuthLimits(
   app.use(createCalculationsRouter({ auth, db, limits }))
   app.use(createRemindersRouter({ auth, db, limits }))
   app.use(createJobsRouter({ auth, db, mailer, limits, now }))
+  app.use(createPlannerRouter({ auth, db, limits }))
 
   // Unknown /api paths get JSON, not the website.
   app.use('/api', (req, res) => {

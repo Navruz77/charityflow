@@ -4,6 +4,9 @@
 // function that reads or writes user rows without a user id.
 import { supabaseRequest } from './request.js'
 
+const GOAL_COLUMNS = 'id,name,amount_cents,period,created_at'
+const GIFT_COLUMNS = 'id,amount_cents,given_on,recipient,note,goal_id,goal_label'
+const giftRow = (g) => ({ amount_cents: g.amountCents, given_on: g.givenOn, recipient: g.recipient, note: g.note, goal_id: g.goalId })
 const CALC_COLUMNS = 'id,saved_at,zakat_date,nisab_choice,inputs,prices_used,result'
 
 function fail(what, res) {
@@ -130,6 +133,115 @@ export const dbClient = {
       body: { read_at: new Date().toISOString() },
     })
     if (!res.ok) throw fail('reminders mark read', res)
+  },
+
+  // ---- Sadaqah planner (M7). Every query is filtered by user_id.
+
+  async listGoals(userId) {
+    const res = await supabaseRequest(`/rest/v1/goals?user_id=eq.${encodeURIComponent(userId)}&select=${GOAL_COLUMNS}&order=created_at.asc`)
+    if (!res.ok) throw fail('goals read', res)
+    return res.data
+  },
+
+  // One of the user's own goals, or null.
+  async getGoal(userId, goalId) {
+    const res = await supabaseRequest(
+      `/rest/v1/goals?id=eq.${encodeURIComponent(goalId)}&user_id=eq.${encodeURIComponent(userId)}&select=${GOAL_COLUMNS}`,
+    )
+    if (!res.ok) throw fail('goal read', res)
+    return res.data[0] ?? null
+  },
+
+  async countGoals(userId, upTo) {
+    const res = await supabaseRequest(`/rest/v1/goals?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=${upTo}`)
+    if (!res.ok) throw fail('goals count', res)
+    return res.data.length
+  },
+
+  async insertGoal(userId, { name, amountCents, period }) {
+    const res = await supabaseRequest(`/rest/v1/goals?select=${GOAL_COLUMNS}`, {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: { user_id: userId, name, amount_cents: amountCents, period },
+    })
+    if (!res.ok) throw fail('goal insert', res)
+    return res.data[0]
+  },
+
+  // Returns the updated row, or null if no such goal belongs to the user.
+  async updateGoal(userId, goalId, { name, amountCents, period }) {
+    const res = await supabaseRequest(
+      `/rest/v1/goals?id=eq.${encodeURIComponent(goalId)}&user_id=eq.${encodeURIComponent(userId)}&select=${GOAL_COLUMNS}`,
+      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { name, amount_cents: amountCents, period } },
+    )
+    if (!res.ok) throw fail('goal update', res)
+    return res.data[0] ?? null
+  },
+
+  // Removes a goal but keeps its gifts (S8.1): first each gift gets the
+  // goal's name as its label, then the goal is deleted, and the database
+  // sets the gifts' goal_id to null. Returns false if it isn't the user's.
+  async removeGoal(userId, goalId) {
+    const goal = await this.getGoal(userId, goalId)
+    if (!goal) return false
+    const label = await supabaseRequest(
+      `/rest/v1/gifts?goal_id=eq.${encodeURIComponent(goalId)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { goal_label: goal.name } },
+    )
+    if (!label.ok) throw fail('gift labels', label)
+    const res = await supabaseRequest(
+      `/rest/v1/goals?id=eq.${encodeURIComponent(goalId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { method: 'DELETE', headers: { Prefer: 'return=representation' } },
+    )
+    if (!res.ok) throw fail('goal delete', res)
+    return res.data.length > 0
+  },
+
+  async listGifts(userId, limit) {
+    const res = await supabaseRequest(
+      `/rest/v1/gifts?user_id=eq.${encodeURIComponent(userId)}&select=${GIFT_COLUMNS}&order=given_on.desc,created_at.desc&limit=${limit}`,
+    )
+    if (!res.ok) throw fail('gifts read', res)
+    return res.data
+  },
+
+  async countGifts(userId, upTo) {
+    const res = await supabaseRequest(`/rest/v1/gifts?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=${upTo}`)
+    if (!res.ok) throw fail('gifts count', res)
+    return res.data.length
+  },
+
+  async insertGift(userId, g) {
+    const res = await supabaseRequest(`/rest/v1/gifts?select=${GIFT_COLUMNS}`, {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: { user_id: userId, ...giftRow(g), goal_label: null },
+    })
+    if (!res.ok) throw fail('gift insert', res)
+    return res.data[0]
+  },
+
+  // Returns the updated row, or null if no such gift belongs to the user.
+  // Choosing a goal clears an old removed-goal label; leaving the goal
+  // empty keeps the label so the gift still says where it came from.
+  async updateGift(userId, giftId, g) {
+    const body = giftRow(g)
+    if (g.goalId !== null) body.goal_label = null
+    const res = await supabaseRequest(
+      `/rest/v1/gifts?id=eq.${encodeURIComponent(giftId)}&user_id=eq.${encodeURIComponent(userId)}&select=${GIFT_COLUMNS}`,
+      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body },
+    )
+    if (!res.ok) throw fail('gift update', res)
+    return res.data[0] ?? null
+  },
+
+  async deleteGift(userId, giftId) {
+    const res = await supabaseRequest(
+      `/rest/v1/gifts?id=eq.${encodeURIComponent(giftId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { method: 'DELETE', headers: { Prefer: 'return=representation' } },
+    )
+    if (!res.ok) throw fail('gift delete', res)
+    return res.data.length > 0
   },
 
   // ---- reminder job only (POST /api/jobs/reminders, after its JOB_TOKEN

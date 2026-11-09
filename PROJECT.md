@@ -130,7 +130,7 @@ only if the insert happened. The reminder code accepts a pretend `as-of` date an
 would be reminded without sending. Refresh the stored time zone whenever reminder settings are
 saved.
 
-**M7 Sadaqah planner.** Stories S8.1 to S8.3. Goals (monthly or yearly, name, amount), gifts
+**M7 Sadaqah planner: BUILT** — tests, live access test and headless-Chrome run pass; needs deploy + a teammate's phone walkthrough (see Status). Stories S8.1 to S8.3. Goals (monthly or yearly, name, amount), gifts
 (amount, date, optional recipient, note, goal), progress and streaks. Pure functions in
 `src/planner/` with Vitest tests. Periods are calendar months/years in the user's time zone. A
 streak counts only periods from the goal's creation date. Removing a goal keeps its gifts with a
@@ -217,6 +217,27 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 6 — M7 Sadaqah planner, built (2026-11-09).** No SQL needed (tables from M4). Rules in
+`src/planner/progress.js` (pure, Vitest): calendar month/year periods; "today" and a goal's start
+day from the user's stored time zone; progress = given this period, remaining, met (exactly at
+the amount is met); streak = consecutive *completed* periods before the current one that reached
+the amount, never before the goal's creation period (unknown 1), recalculated from the gifts as
+they are now; a gift with no goal or a removed goal counts toward none. Server
+`server/routes/planner.js` + `server/planner/cleanPlanner.js`: `GET|POST /api/goals`,
+`PUT|DELETE /api/goals/:id`, same for `/api/gifts`; own rows only (other users' ids answer 404),
+gift goal must be the user's own, allowlist validation (name ≤100, recipient ≤100, note ≤500,
+control characters stripped, amount 1¢ to $10B integer cents, gift date real and not in the
+future), caps 50 goals / 5,000 gifts, per-user rate limit. Removing a goal first copies its name
+into its gifts' `goal_label`, then the database sets `goal_id` null. Choosing a new goal for such
+a gift clears the label. Screen `#/planner` (signed in; header link): goal cards with a progress
+bar, given/remaining/met and streak, change/remove with confirmation; log a gift; gift list with
+edit/delete. Tests 209/209 (15 planner rules covering every plan case, 11 routes incl. two users).
+`npm run test:access` extended to goals and gifts through the routes: all pass against real
+Supabase (incl. removed goal keeps the gift, labelled, goal_id null). Headless Chrome 12/12
+(one cent short / exactly met, 3-month streak, editing a past gift drops it to 1, remove goal
+keeps labelled gifts, text shown as plain text, no horizontal scroll at 360 px). **Still needed:**
+deploy, then a teammate's phone walkthrough of S8.1 to S8.3 with a test account.
 
 **CI hardening (2026-11-08).** Repo stays public (checked: no secret in any of the 27 commits,
 `.env` never committed). Workflows: least-privilege `permissions` (`test.yml` contents: read;

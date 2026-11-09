@@ -29,6 +29,11 @@ export default function Header({ route }) {
             Reminders{unread > 0 && <span className="badge">{unread}</span>}
           </a>
         )}
+        {session.signedIn && (
+          <a href="#/planner" aria-current={current('/planner')}>
+            Planner
+          </a>
+        )}
         {session.signedIn ? (
           <a href="#/account" aria-current={current('/account')}>
             Account

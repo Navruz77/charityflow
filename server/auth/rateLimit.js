@@ -98,6 +98,7 @@ export function createAuthLimits() {
     // Profile, reminder settings and in-app reminders (M6), per user.
     settingsReadUser: createLimiter({ windowMs: minutes(15), max: 300 }),
     settingsWriteUser: createLimiter({ windowMs: minutes(15), max: 60 }),
+    plannerWriteUser: createLimiter({ windowMs: minutes(15), max: 200 }), // goals and gifts (M7)
     // The reminder job route, per IP (only the hourly workflow should call it).
     jobIp: createLimiter({ windowMs: minutes(15), max: 20 }),
   }

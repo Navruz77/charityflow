@@ -209,7 +209,8 @@ legend {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   font: inherit;
   padding: var(--space-3);
   border-radius: var(--radius-sm);
@@ -464,4 +465,26 @@ a.btn {
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-5);
   padding-left: var(--space-5);
+}
+
+/* M7: giving planner */
+.goal-card .progress-track {
+  height: 10px;
+}
+
+.gift-row {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gift-row .reason-line {
+  border-bottom: none;
+  padding: 0;
+}
+
+.h3-size {
+  font-size: 1.1rem;
 }
