@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { calculateZakat } from '../engine/calculateZakat.js'
 import { buildEngineInputs, initialFormState, emptyGem, emptySecurity, emptyCrypto, emptyRealEstate, emptyRental, emptyBusiness, emptyRetirement } from './useZakatForm.js'
+import { buildSavedCalculation } from '../lib/savedCalculations.js'
+import { cleanCalculation } from '../../server/calculations/cleanCalculation.js'
 
 // The 20 cases Mufti Ahmad confirmed against the engine's rules (see
 // PROJECT.md Status). Each case is entered as a user would type it — through
@@ -134,6 +136,26 @@ describe('the 20 confirmed cases, entered through the screens', () => {
       expect(r.zakatDueCents).toBe(expected.zakatDueCents)
       if (expected.nisabValueCents !== undefined) {
         expect(r.nisab.valueCents).toBe(expected.nisabValueCents)
+      }
+    })
+  }
+})
+
+// M5: each case, saved exactly as the result screen builds it and sent as
+// JSON, passes the server's checks and is stored with the same figures
+// (S4.2 "the row holds every field", S3.5 "keeps the original results").
+describe('the 20 cases can be saved to an account unchanged', () => {
+  const pricesUsed = { ...prices, fetchedAt: '2026-11-01T06:00:12.000Z' }
+  for (const { name, build } of cases) {
+    it(name, () => {
+      const { inputs } = buildEngineInputs(build())
+      const result = { ...calculateZakat(inputs, pricesUsed), errors: [], ok: true }
+      const saved = buildSavedCalculation({ inputs, result, pricesUsed })
+      const overTheWire = JSON.parse(JSON.stringify(saved))
+      const cleaned = cleanCalculation(overTheWire)
+      expect(cleaned.ok, cleaned.field).toBe(true)
+      for (const key of ['status', 'zakatDueCents', 'netCents', 'totalZakatableCents', 'lines', 'nisab', 'debtsSubtracted']) {
+        expect(cleaned.row.result[key]).toEqual(overTheWire.result[key])
       }
     })
   }

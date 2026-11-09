@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { useSession } from '../hooks/useSession.jsx'
 import { FormMessage, PasswordField, WakeNote } from '../components/AuthFields.jsx'
+import { NeedsConnection } from '../components/Connection.jsx'
+import TransferPrompt from '../components/TransferPrompt.jsx'
+import { forgetTransferAnswer } from '../lib/savedCalculations.js'
 
 const CONFIRM_WORD = 'DELETE' // must match the server (server/routes/account.js)
 
@@ -10,13 +13,20 @@ export default function AccountPage() {
   const session = useSession()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [signOutError, setSignOutError] = useState(null)
   const [typed, setTyped] = useState('')
   const [password, setPassword] = useState('')
   const [deleted, setDeleted] = useState(false)
 
   async function signOut() {
     setBusy(true)
-    await api('POST', '/api/auth/logout')
+    const res = await api('POST', '/api/auth/logout')
+    if (res.status === 0) {
+      setBusy(false)
+      setSignOutError('Signing out needs a connection. You are still signed in.')
+      return
+    }
+    forgetTransferAnswer()
     await session.refresh()
     setBusy(false)
     window.location.hash = '/'
@@ -51,6 +61,8 @@ export default function AccountPage() {
 
   if (session.loading) return <p className="muted">Loading…</p>
 
+  if (session.unreachable) return <NeedsConnection what="Your account" onRetry={session.refresh} />
+
   if (!session.signedIn) {
     return (
       <div className="card form-stack">
@@ -70,12 +82,17 @@ export default function AccountPage() {
 
   return (
     <>
+      <TransferPrompt />
       <div className="card form-stack">
         <h2>My account</h2>
         <div className="reason-line">
           <span>Signed in as</span>
           <span className="break-anywhere">{session.email}</span>
         </div>
+        <a className="btn btn-secondary" href="#/saved">
+          My saved calculations
+        </a>
+        <FormMessage kind="error">{signOutError}</FormMessage>
         <button type="button" className="btn btn-secondary" onClick={signOut} disabled={busy}>
           Sign out
         </button>

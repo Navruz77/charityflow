@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { calculateZakat } from '../engine/calculateZakat.js'
 import { dollarsTextToCents, dollarsTextToCentsOrNull, percentTextToNumber } from '../lib/money.js'
-import { loadGuestData, saveGuestData, clearGuestData } from '../lib/storage.js'
-
-const STORAGE_KEY = 'charityflow.zakat.guestSave.v1'
 
 export const emptyGem = () => ({ valueCents: '', purpose: 'personal' })
 export const emptySecurity = () => ({ valueCents: '', purpose: 'longTerm', countInFull: false, zakatableSharePct: '' })
@@ -33,9 +30,9 @@ export function initialFormState() {
   }
 }
 
-// Shape stored in localStorage must look roughly like the form state, so
-// a corrupted or old-version blob doesn't get fed back into the form.
-function isValidSavedState(data) {
+// A restored draft (src/lib/formDraft.js) must look like the form state,
+// so a damaged or old-version copy is never fed back into the form.
+export function isValidFormState(data) {
   return (
     data &&
     typeof data === 'object' &&
@@ -139,17 +136,12 @@ export function buildEngineInputs(form) {
   return { inputs, localErrors }
 }
 
-export function useZakatForm() {
-  const [form, setForm] = useState(() => loadGuestData(STORAGE_KEY, isValidSavedState) ?? initialFormState())
+// `startForm` is a restored draft, if there is one. The calculator page
+// keeps the draft in sessionStorage (M5); this hook only holds the state.
+export function useZakatForm(startForm) {
+  const [form, setForm] = useState(() => startForm ?? initialFormState())
 
-  useEffect(() => {
-    saveGuestData(STORAGE_KEY, form, isValidSavedState)
-  }, [form])
-
-  const resetForm = () => {
-    clearGuestData(STORAGE_KEY)
-    setForm(initialFormState())
-  }
+  const resetForm = () => setForm(initialFormState())
 
   // Runs the engine with a given prices object, merging local parsing
   // errors with the engine's own validation errors.
@@ -162,7 +154,9 @@ export function useZakatForm() {
       seen.add(e.field)
       return true
     })
-    return { ...result, errors, ok: errors.length === 0 }
+    // `inputs` is returned too, so a result can be saved with exactly
+    // what produced it (S4.1, S4.2).
+    return { ...result, errors, ok: errors.length === 0, inputs }
   }
 
   return { form, setForm, resetForm, calculate }

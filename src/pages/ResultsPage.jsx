@@ -1,18 +1,12 @@
 import { centsToDisplay } from '../lib/money.js'
-import { getReasonText } from '../content/reasonText.js'
 import Definitions from '../components/Definitions.jsx'
+import SaveCalculation from '../components/SaveCalculation.jsx'
+import { LinesCard, NumbersCard } from '../components/ResultBreakdown.jsx'
+import { priceAge, statusCopy } from '../lib/resultText.js'
 
-const STATUS_COPY = {
-  due: { className: 'due', title: 'Zakat is due' },
-  belowNisab: { className: 'below', title: 'Below nisab — no Zakat due' },
-  notYetDue: { className: 'notyet', title: 'Not yet due' },
-  needsNisab: { className: 'notyet', title: 'Choose a nisab to see your result' },
-  needsHawl: { className: 'notyet', title: 'Answer the one-year question to see your result' },
-}
-
-export default function ResultsPage({ result, pricesUsed, onStartOver }) {
-  const status = STATUS_COPY[result.status] ?? STATUS_COPY.belowNisab
-  const countedLines = result.lines.filter((l) => l.treatment !== 'excluded')
+export default function ResultsPage({ result, inputs, pricesUsed, onStartOver, onEdit }) {
+  const status = statusCopy(result.status)
+  const age = priceAge(pricesUsed?.fetchedAt)
 
   return (
     <>
@@ -21,38 +15,26 @@ export default function ResultsPage({ result, pricesUsed, onStartOver }) {
         <div className="result-amount">{centsToDisplay(result.zakatDueCents)}</div>
       </div>
 
-      <div className="card">
-        <h3>Your numbers</h3>
-        <div className="reason-line">
-          <span>Net zakatable wealth</span>
-          <span>{centsToDisplay(result.netCents)}</span>
-        </div>
-        <div className="reason-line">
-          <span>Nisab value ({result.nisab.choice})</span>
-          <span>{centsToDisplay(result.nisab.valueCents)}</span>
-        </div>
-      </div>
+      <NumbersCard result={result} />
+      <LinesCard result={result} />
 
-      <div className="card">
-        <h3>How each category was treated</h3>
-        {countedLines.map((line, i) => (
-          <div className="reason-line" key={`${line.category}-${i}`}>
-            <span>{getReasonText(line.reasonKey)}</span>
-            <span>{centsToDisplay(line.valueCents)}</span>
-          </div>
-        ))}
-      </div>
-
+      {/* S12.2 and S5.1: when the prices were retrieved, and how old they are. */}
       <p className="muted" style={{ textAlign: 'center' }}>
-        Prices as of {pricesUsed?.fetchedAt ? new Date(pricesUsed.fetchedAt).toLocaleString() : 'entered by you'} —{' '}
+        Prices as of {pricesUsed?.fetchedAt ? new Date(pricesUsed.fetchedAt).toLocaleString() : 'unknown'}
+        {age ? ` (${age})` : ''} —{' '}
         <a href="https://metalcharts.org" target="_blank" rel="noreferrer">
-          Prices via metalcharts.org
+          Metal prices by MetalCharts
         </a>
       </p>
 
+      <SaveCalculation inputs={inputs} result={result} pricesUsed={pricesUsed} />
+
       <Definitions />
 
-      <div style={{ textAlign: 'center' }}>
+      <div className="btn-row" style={{ justifyContent: 'center' }}>
+        <button type="button" className="btn btn-secondary" onClick={onEdit}>
+          Change my entries
+        </button>
         <button type="button" className="btn btn-secondary" onClick={onStartOver}>
           Start over
         </button>

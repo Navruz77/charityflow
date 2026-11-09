@@ -1,8 +1,7 @@
 import { useSession } from '../hooks/useSession.jsx'
 
-// App header: logo/name and primary nav. "Saved" stays a disabled
-// placeholder until M5. The last link is "Sign in" for guests and
-// "Account" once signed in.
+// App header: logo/name and primary nav. The last link is "Sign in" for
+// guests and "Account" once signed in.
 export default function Header({ route }) {
   const session = useSession()
   const current = (path) => (route === path ? 'page' : undefined)
@@ -16,9 +15,9 @@ export default function Header({ route }) {
         <a href="#/calculator" aria-current={current('/calculator')}>
           Calculator
         </a>
-        <span className="nav-placeholder" aria-disabled="true" title="Coming in a later milestone">
+        <a href="#/saved" aria-current={current('/saved')}>
           Saved
-        </span>
+        </a>
         {session.signedIn ? (
           <a href="#/account" aria-current={current('/account')}>
             Account

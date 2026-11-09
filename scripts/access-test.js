@@ -14,6 +14,8 @@
 // deletes B through DELETE /api/account and confirms no row of B remains,
 // then removes A. It cleans up even if a check fails.
 
+import { calculateZakat } from '../src/engine/calculateZakat.js'
+
 const APP = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 const SB = (process.env.SUPABASE_URL || '').replace(/\/$/, '')
 const SECRET = process.env.SUPABASE_SECRET_KEY
@@ -129,6 +131,36 @@ async function main() {
     await a.call('DELETE', '/api/account', { userId: idB })
     await a.call('DELETE', '/api/account', { confirm: 'DELETE', password: 'Wrong-pass-123x', userId: idB })
     check('DELETE /api/account without confirmation or with a wrong password removes nothing', (await countRows('profiles', idB)) === 1 && (await countRows('profiles', idA)) === 1)
+
+    // ---- M5: saved calculations through /api/calculations (S4.2, NFR5)
+    console.log('\n-- /api/calculations --')
+    const inputs = {
+      cashCents: 300000, savingsCents: 0, gold: { grams: 51, valueCents: null }, silver: { grams: 0, valueCents: null },
+      gems: [], securities: [], crypto: [], realEstateForSale: [], rentals: [], businesses: [], retirement: [],
+      debts: { dueNowCents: 0, installments12mCents: 0 }, nisab: 'silver', heldOneLunarYear: true, zakatDate: '2026-11-08',
+    }
+    const pricesUsed = { goldUsdPerGram: 134.34, silverUsdPerGram: 1.96, fetchedAt: '2026-11-01T06:00:12.000Z' }
+    const calcBody = { savedAt: '2026-11-02T10:00:00.000Z', inputs, nisabChoice: 'silver', pricesUsed, result: calculateZakat(inputs, pricesUsed) }
+    check('a guest cannot save to an account', (await appBrowser().call('POST', '/api/calculations', { calculations: [calcBody] })).status === 401)
+    const savedA = await a.call('POST', '/api/calculations', { calculations: [{ ...calcBody, user_id: idB }] })
+    check('A saves a calculation', savedA.status === 201, `${savedA.status} ${JSON.stringify(savedA.data)}`)
+    const calcIdA = savedA.data?.calculations?.[0]?.id
+    const rowA = (await asServer(`/rest/v1/calculations?id=eq.${calcIdA}&select=*`)).data?.[0]
+    check('the row belongs to A even though the body named B', rowA?.user_id === idA)
+    check(
+      'the row holds every field (date, entries, nisab, prices, result)',
+      rowA?.zakat_date === '2026-11-08' && rowA?.nisab_choice === 'silver' && rowA?.inputs?.cashCents === 300000 &&
+        rowA?.prices_used?.goldUsdPerGram === 134.34 && rowA?.result?.zakatDueCents === 24628 && Date.parse(rowA?.saved_at) === Date.parse(calcBody.savedAt),
+    )
+    const tampered = await a.call('POST', '/api/calculations', { calculations: [{ ...calcBody, result: { ...calcBody.result, zakatDueCents: 1 } }] })
+    check('a tampered result is refused', tampered.status === 400, `${tampered.status}`)
+    const listB = await b.call('GET', '/api/calculations')
+    check("B's list does not include A's calculation", listB.status === 200 && !listB.data.calculations.some((c) => c.id === calcIdA))
+    const listA = await a.call('GET', '/api/calculations')
+    check("A's list has exactly A's calculation", listA.status === 200 && listA.data.calculations.length === 1 && listA.data.calculations[0].id === calcIdA)
+    const crossDel = await b.call('DELETE', `/api/calculations/${calcIdA}`)
+    check("B cannot delete A's calculation", crossDel.status === 404 && (await countRows('calculations', idA)) === 1, `${crossDel.status}`)
+    check('A deletes their own calculation', (await a.call('DELETE', `/api/calculations/${calcIdA}`)).status === 200 && (await countRows('calculations', idA)) === 0)
 
     // ---- give B a row in every table, as B (own token) where users may write
     const tokenA = (await http(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: PUBLISHABLE }, body: { email: emailA, password } })).data?.access_token

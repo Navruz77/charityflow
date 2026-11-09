@@ -1,5 +1,6 @@
-import { lazy, Suspense, useState } from 'react'
-import { useZakatForm } from '../hooks/useZakatForm.js'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { isValidFormState, useZakatForm } from '../hooks/useZakatForm.js'
+import { clearDraft, loadDraft, saveDraft } from '../lib/formDraft.js'
 import { usePrices } from '../hooks/usePrices.js'
 import StepCashSavings from '../components/steps/StepCashSavings.jsx'
 import StepGoldSilver from '../components/steps/StepGoldSilver.jsx'
@@ -31,13 +32,26 @@ const STEPS = [
 ]
 const TOTAL_STEPS = STEPS.length + 1 // + the summary step
 
+// Reads the draft once per page load (M5: survive an autoUpdate reload).
+function useRestoredDraft() {
+  const [draft] = useState(() => loadDraft(isValidFormState, STEPS.length))
+  return draft
+}
+
 export default function CalculatorPage() {
-  const { form, setForm, resetForm, calculate } = useZakatForm()
+  const draft = useRestoredDraft()
+  const { form, setForm, resetForm, calculate } = useZakatForm(draft?.form)
   const { prices, error: priceError, loading: pricesLoading, stale } = usePrices()
-  const [stepIndex, setStepIndex] = useState(0)
+  const [stepIndex, setStepIndex] = useState(draft?.stepIndex ?? 0)
   const [errors, setErrors] = useState([])
-  const [result, setResult] = useState(null)
-  const [pricesUsed, setPricesUsed] = useState(null)
+  // A result that was on screen before a reload is worked out again from
+  // the same entries and the same prices, so it comes back unchanged.
+  const [shown, setShown] = useState(() => (draft?.showResult ? rerun(calculate, draft.pricesUsed) : null))
+
+  // Keep the draft up to date after every change.
+  useEffect(() => {
+    saveDraft({ form, stepIndex, pricesUsed: shown?.pricesUsed ?? null, showResult: shown !== null })
+  }, [form, stepIndex, shown])
 
   const goToStep = (i) => setStepIndex(i)
   const next = () => setStepIndex((i) => Math.min(i + 1, STEPS.length))
@@ -51,21 +65,36 @@ export default function CalculatorPage() {
       return
     }
     setErrors([])
-    setPricesUsed(prices)
-    setResult(r)
+    const { inputs, ...result } = r
+    setShown({ result, inputs, pricesUsed: prices })
   }
 
   const handleStartOver = () => {
     resetForm()
-    setResult(null)
+    clearDraft()
+    setShown(null)
     setErrors([])
     setStepIndex(0)
   }
 
+  // Back to the entries (e.g. to try the other nisab, S1.9) without losing them.
+  const handleEdit = () => {
+    setShown(null)
+    setStepIndex(STEPS.length)
+  }
+
+  const result = shown?.result
+  const pricesUsed = shown?.pricesUsed
   if (result) {
     return (
       <Suspense fallback={<div className="card">Loading results…</div>}>
-        <ResultsPage result={result} pricesUsed={pricesUsed} onStartOver={handleStartOver} />
+        <ResultsPage
+          result={result}
+          inputs={shown.inputs}
+          pricesUsed={pricesUsed}
+          onStartOver={handleStartOver}
+          onEdit={handleEdit}
+        />
       </Suspense>
     )
   }
@@ -117,4 +146,12 @@ export default function CalculatorPage() {
       onNext={next}
     />
   )
+}
+
+// Runs the engine again for a restored result; null if it no longer works.
+function rerun(calculate, pricesUsed) {
+  const r = calculate(pricesUsed)
+  if (!r.ok) return null
+  const { inputs, ...result } = r
+  return { result, inputs, pricesUsed }
 }

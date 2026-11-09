@@ -79,11 +79,50 @@ a {
   color: var(--accent);
 }
 
-.nav-placeholder {
-  color: var(--text-muted);
-  opacity: 0.5;
+/* A.13: offline banner, under the header on every screen. Uses the text
+   color on the soft accent so contrast stays AA in light and dark mode. */
+.offline-banner {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.first-visit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 4px solid var(--accent);
+}
+
+.first-visit .btn {
+  align-self: flex-start;
+}
+
+.saved-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.saved-item .reason-line span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.saved-details summary {
+  cursor: pointer;
   font-weight: 600;
-  cursor: default;
+  padding: var(--space-2) 0;
+}
+
+.saved-details .card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  margin-top: var(--space-2);
 }
 
 .app-footer {

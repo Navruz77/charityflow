@@ -113,7 +113,7 @@ Done when: a two-user test cannot read, change or delete the other user's data t
 `/api` route or through the database rules alone; reset and delete flows pass; one admin read
 writes exactly one log row; the network panel shows only requests to our own address.
 
-**M5 Saving and offline.** Stories S4.1, S4.2, S3.5, S5.1 to S5.3. Guest: "Save on this device"
+**M5 Saving and offline: BUILT** — tests, live access test and headless-Chrome offline run pass locally; needs deploy + real-phone airplane-mode tests (see Status). Stories S4.1, S4.2, S3.5, S5.1 to S5.3. Guest: "Save on this device"
 to `localStorage`. Signed in: "Save to my account" posts to the server (`/api/calculations`);
 offline shows "needs a connection" and keeps the calculation on screen. After sign-in, offer to
 add guest saves (only on yes). `vite-plugin-pwa` precaches the app; prices network-first with
@@ -217,6 +217,31 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 4 — M5 saving and offline, built (2026-11-08).** Server: `server/routes/calculations.js`
+(`GET|POST /api/calculations`, `DELETE /api/calculations/:id`, signed-in only, user id only from
+the session). `server/calculations/cleanCalculation.js` rebuilds every saved calculation from an
+allowlist (types, enums, list sizes ≤ 25, prices in the B.2 band, dates) and re-runs the engine:
+the browser's figures must match or the save is refused, and the server's own result is stored.
+POST takes `{calculations:[1..10]}` (all or none); cap 200 saves per account; rate limits per
+user and per IP; 404 for both "missing" and "someone else's". Browser: guest saves in
+`cf.v1.saved` (`src/lib/savedCalculations.js`, each entry validated on load, max 50), "Save to my
+account" with a needs-a-connection message that keeps the result on screen, `#/saved` page
+(device + account lists, delete with confirm), transfer prompt on Account/Saved after sign-in
+(yes = moved into the account in batches and removed from the device; no = asked again next
+tab). Offline: `vite-plugin-pwa@1.3.0` (dev dependency; precache, autoUpdate, clientsClaim,
+`/api/prices` NetworkFirst with 1-entry cache, no other `/api` ever cached), offline banner,
+first-visit note (`cf.v1.firstVisitNoteDismissed`), "Needs a connection" on account screens,
+prices refetched on reconnect (S5.3), price age on every result. In-progress form (+ step and an
+on-screen result) now lives in `sessionStorage` (`cf.v1.draft`, `src/lib/formDraft.js`); the old
+pre-M5 localStorage form copy is deleted on load (B.3 allows only three keys). App icon (crescent)
++ manifest. Tests: 154/154 (new: route tests, guest-save/transfer, draft, all 20 cases save
+unchanged through the server checks). `npm run test:access` 70/70 against real Supabase (9 new
+calculation checks). Headless-Chrome run (local server + real Supabase): service worker
+offline reload, offline result = online result, guest save survives reload, transfer adds one
+row with the original time and figures, signed-in offline save shows the message, no
+horizontal scroll at 360 px. **Still needs a human:** deploy, then the plan's real iPhone +
+Android airplane-mode test and the "deploy while a phone holds the old version" test.
 
 **Step 3 closed — M4 DONE (2026-11-08).** The user ran the real-inbox phone walkthrough on
 https://charityflow.onrender.com: register, confirm, sign in/out, reset, delete all passed;

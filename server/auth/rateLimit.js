@@ -91,5 +91,9 @@ export function createAuthLimits() {
     emailSendEmail: createLimiter({ windowMs: minutes(60), max: 3 }), // per email
     confirmIp: createLimiter({ windowMs: minutes(15), max: 30 }),
     newPasswordIp: createLimiter({ windowMs: minutes(15), max: 10 }),
+    // Saved calculations (M5): per signed-in user, plus a per-IP ceiling.
+    calcReadUser: createLimiter({ windowMs: minutes(15), max: 120 }),
+    calcWriteUser: createLimiter({ windowMs: minutes(15), max: 40 }),
+    calcIp: createLimiter({ windowMs: minutes(15), max: 300 }),
   }
 }

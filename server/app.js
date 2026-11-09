@@ -6,6 +6,7 @@ import express from 'express'
 import { pricesRouter } from './routes/prices.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createAccountRouter } from './routes/account.js'
+import { createCalculationsRouter } from './routes/calculations.js'
 import { createAuthLimits } from './auth/rateLimit.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -63,6 +64,7 @@ export function createApp({ auth, db, breach, limits = createAuthLimits() }) {
   app.use(pricesRouter)
   app.use(createAuthRouter({ auth, db, breach, limits }))
   app.use(createAccountRouter({ auth, db, limits }))
+  app.use(createCalculationsRouter({ auth, db, limits }))
 
   // Unknown /api paths get JSON, not the website.
   app.use('/api', (req, res) => {

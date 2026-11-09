@@ -8,11 +8,13 @@ import SignInPage from './pages/SignInPage.jsx'
 import ResetPage from './pages/ResetPage.jsx'
 import ConfirmPage from './pages/ConfirmPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
+import SavedPage from './pages/SavedPage.jsx'
 import { PlannerPage, RemindersPage } from './pages/AccountFeaturePages.jsx'
 
 export const routes = [
   { path: '/', label: 'Home', component: HomePage },
   { path: '/calculator', label: 'Calculator', component: CalculatorPage },
+  { path: '/saved', label: 'Saved', component: SavedPage },
   { path: '/status', label: 'Status', component: StatusPage },
   { path: '/register', label: 'Create account', component: RegisterPage },
   { path: '/signin', label: 'Sign in', component: SignInPage },

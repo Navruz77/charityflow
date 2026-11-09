@@ -1,4 +1,5 @@
 import { useSession } from '../hooks/useSession.jsx'
+import { NeedsConnection } from '../components/Connection.jsx'
 
 // Reminders (M6) and the giving planner (M7) need an account. Until those
 // milestones land, these pages show the S3.1 rule: a guest who opens an
@@ -6,6 +7,7 @@ import { useSession } from '../hooks/useSession.jsx'
 function AccountFeature({ title, why }) {
   const session = useSession()
   if (session.loading) return <p className="muted">Loading…</p>
+  if (session.unreachable) return <NeedsConnection what={title} onRetry={session.refresh} />
 
   if (!session.signedIn) {
     return (

@@ -21,6 +21,9 @@ export function SessionProvider({ children }) {
 
   useEffect(() => {
     refresh()
+    // Opened offline, then reconnected: find out who is signed in (S5.2).
+    window.addEventListener('online', refresh)
+    return () => window.removeEventListener('online', refresh)
   }, [refresh])
 
   return <SessionContext.Provider value={{ ...session, refresh }}>{children}</SessionContext.Provider>

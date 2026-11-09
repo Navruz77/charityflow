@@ -4,6 +4,8 @@
 // function that reads or writes user rows without a user id.
 import { supabaseRequest } from './request.js'
 
+const CALC_COLUMNS = 'id,saved_at,zakat_date,nisab_choice,inputs,prices_used,result'
+
 function fail(what, res) {
   return new Error(`${what} failed with ${res.status}`)
 }
@@ -34,6 +36,47 @@ export const dbClient = {
       body: { time_zone: timeZone },
     })
     if (!res.ok) throw fail('profile update', res)
+  },
+
+  // ---- saved calculations (M5). Every query is filtered by user_id.
+
+  // The user's saved calculations, newest first.
+  async listCalculations(userId, limit) {
+    const res = await supabaseRequest(
+      `/rest/v1/calculations?user_id=eq.${encodeURIComponent(userId)}&select=${CALC_COLUMNS}&order=saved_at.desc&limit=${limit}`,
+    )
+    if (!res.ok) throw fail('calculations read', res)
+    return res.data
+  },
+
+  // How many the user has saved (stops at `upTo`, which is all we need).
+  async countCalculations(userId, upTo) {
+    const res = await supabaseRequest(`/rest/v1/calculations?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=${upTo}`)
+    if (!res.ok) throw fail('calculations count', res)
+    return res.data.length
+  },
+
+  // Adds rows for this user in one request (all or none). The user_id is
+  // set here from the session, never taken from the browser.
+  async insertCalculations(userId, rows) {
+    const res = await supabaseRequest(`/rest/v1/calculations?select=${CALC_COLUMNS}`, {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: rows.map((row) => ({ ...row, user_id: userId })),
+    })
+    if (!res.ok) throw fail('calculations insert', res)
+    return res.data
+  },
+
+  // Deletes one of the user's own calculations. Returns false if no such
+  // row belongs to this user.
+  async deleteCalculation(userId, id) {
+    const res = await supabaseRequest(
+      `/rest/v1/calculations?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { method: 'DELETE', headers: { Prefer: 'return=representation' } },
+    )
+    if (!res.ok) throw fail('calculation delete', res)
+    return res.data.length > 0
   },
 
   async isAdmin(userId) {
