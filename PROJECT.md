@@ -102,7 +102,7 @@ confirm field names and units.
 Done when: cache test (two calls within 8 hours, one provider request), both failure drills,
 and the 25-hour test behave as described.
 
-**M4 Accounts: BUILT, awaiting live setup and tests** (see Status). Stories S3.2, S3.3, S3.4, S3.6. Routes under `/api/auth` call Supabase Auth from
+**M4 Accounts: DONE** — live, access test passed, phone walkthrough passed (see Status). Stories S3.2, S3.3, S3.4, S3.6. Routes under `/api/auth` call Supabase Auth from
 the server; HttpOnly session cookie. Email + password (min 8), confirmation, resend. Same message
 for wrong email and wrong password. Reset link sets a new password and signs out other devices.
 `DELETE /api/account` (explicit confirmation) removes the sign-in record with the secret key and
@@ -217,6 +217,17 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 3 closed — M4 DONE (2026-11-08).** The user ran the real-inbox phone walkthrough on
+https://charityflow.onrender.com: register, confirm, sign in/out, reset, delete all passed;
+confirmation and reset emails landed in the Gmail inbox (sender shows Brevo's
+`brevosend.com` address, expected without our own domain). Phone sign-up on mobile data
+worked, so per-IP rate limits see real client addresses on Render. Supabase settings updated to
+match: min length 8, no required characters, 1-hour email links, sender name CharityFlow.
+Password policy decision: the user chose to follow NIST SP 800-63B (no forced number/symbol).
+Still open but outside M4: delete the old `charityflow-app` Render service, run Price health
+manually to prove the `APP_URL` secret, add the four admins once teammates register, fix the
+API Ninjas backup key.
 
 **Step 3 hardening — account security (2026-11-08).** The user asked for strong, non-default
 security on accounts and for that standard on all future code. Kept S3.2's 8-character minimum
