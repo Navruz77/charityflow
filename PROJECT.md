@@ -228,7 +228,7 @@ browser/service-worker error text; the first-visit note tells iPhone users to op
 Screen app once while online. 160/160 tests; headless Chrome reproduces the Home-only case and
 passes. Re-test on https://charityflow.onrender.com from a fresh Home Screen icon (opened once
 online, then airplane mode): calculation, device save, close and reopen, reconnect all passed.
-Not run: Android airplane-mode test (no Android phone yet) — do it before the demo if one is
+Not reported: Android airplane-mode test (the plan asks for one) — do it before the demo if one is
 available. Outside M5 and still open from earlier: delete the old `charityflow-app` Render service,
 run Price health manually, add the four admins, fix the API Ninjas key.
 
