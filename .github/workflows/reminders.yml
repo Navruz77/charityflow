@@ -1,0 +1,47 @@
+name: Reminders
+
+# M6: runs the reminder job every hour (B.7). The server decides who is due
+# from each user's own time zone and sends nothing before 09:00 local time,
+# so a late or skipped run never loses a reminder (M6 unknown 2).
+on:
+  schedule:
+    - cron: '7 * * * *' # every hour at :07 (on the hour is GitHub's busiest time)
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: 'Dry run at this pretend time, e.g. 2027-02-08T15:00:00Z (leave empty for a real run)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call POST /api/jobs/reminders
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+          AS_OF: ${{ inputs.as_of }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_URL:-}" ] || [ -z "${JOB_TOKEN:-}" ]; then
+            echo "APP_URL and JOB_TOKEN must be set as repository secrets."
+            exit 1
+          fi
+          # Built with jq so the as-of text can never break out of the JSON.
+          if [ -n "${AS_OF:-}" ]; then
+            body=$(jq -n --arg asOf "$AS_OF" '{asOf: $asOf}')
+          else
+            body='{}'
+          fi
+          # The free Render server can take about a minute to wake up.
+          curl -sS --fail-with-body --max-time 150 --retry 2 --retry-delay 20 --retry-all-errors \
+            -X POST "$APP_URL/api/jobs/reminders" \
+            -H "Authorization: Bearer $JOB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$body"
+          echo

@@ -55,6 +55,15 @@ export const authClient = {
     return supabaseRequest('/auth/v1/user', { method: 'PUT', userToken: accessToken, body: { password } })
   },
 
+  // The user's email address, for the reminder job only (M6). Read with the
+  // secret key; returns the address or null.
+  async getUserEmail(userId) {
+    const res = await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(userId)}`)
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`user lookup failed with ${res.status}`)
+    return typeof res.data?.email === 'string' ? res.data.email : null
+  },
+
   // Permanently removes the sign-in record using the secret key. The
   // database's "on delete cascade" then removes every row the user owns.
   deleteUser(userId) {

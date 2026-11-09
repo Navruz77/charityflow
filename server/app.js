@@ -7,6 +7,8 @@ import { pricesRouter } from './routes/prices.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createAccountRouter } from './routes/account.js'
 import { createCalculationsRouter } from './routes/calculations.js'
+import { createRemindersRouter } from './routes/reminders.js'
+import { createJobsRouter } from './routes/jobs.js'
 import { createAuthLimits } from './auth/rateLimit.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -14,7 +16,8 @@ const distDir = path.join(__dirname, '..', 'dist')
 
 // `breach` checks passwords against known leaks; `limits` holds the rate
 // limits (a fresh set per app, so each test starts clean).
-export function createApp({ auth, db, breach, limits = createAuthLimits() }) {
+// `mailer` sends reminder emails; `now` lets tests fix the clock.
+export function createApp({ auth, db, breach, mailer, limits = createAuthLimits(), now }) {
   const app = express()
   app.disable('x-powered-by') // don't advertise the framework/version
   // Render puts a proxy in front of us. This makes req.secure true for
@@ -65,6 +68,8 @@ export function createApp({ auth, db, breach, limits = createAuthLimits() }) {
   app.use(createAuthRouter({ auth, db, breach, limits }))
   app.use(createAccountRouter({ auth, db, limits }))
   app.use(createCalculationsRouter({ auth, db, limits }))
+  app.use(createRemindersRouter({ auth, db, limits }))
+  app.use(createJobsRouter({ auth, db, mailer, limits, now }))
 
   // Unknown /api paths get JSON, not the website.
   app.use('/api', (req, res) => {

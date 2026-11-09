@@ -4,7 +4,8 @@
 import express from 'express'
 import { clearSessionCookie, requireUser } from '../auth/session.js'
 import { cleanTimeZone, isUuid, normalizeEmail } from '../auth/validate.js'
-import { tooMany } from '../auth/guards.js'
+import { firstRefusal, tooMany } from '../auth/guards.js'
+import { hijriOfIsoDate } from '../../src/lib/hijriParts.js'
 
 // The exact word the user must type to delete their account (S3.6).
 export const DELETE_CONFIRM_WORD = 'DELETE'
@@ -28,19 +29,38 @@ export function createAccountRouter({ auth, db, limits }) {
       email: req.user.email,
       timeZone: profile?.time_zone ?? null,
       zakatDate: profile?.zakat_date ?? null,
+      zakatHijriMonth: profile?.zakat_hijri_month ?? null,
+      zakatHijriDay: profile?.zakat_hijri_day ?? null,
       createdAt: profile?.created_at ?? null,
     })
   })
 
-  // PUT /api/profile { timeZone } — M6 adds the Zakat date here.
+  // PUT /api/profile { timeZone?, zakatDate? } — either or both.
+  // zakatDate is YYYY-MM-DD to set or change it, or null to remove it
+  // (S6.1). The server works out its Hijri month and day itself (the date
+  // recurs on its Hijri date), so the browser can't store a mismatch.
   router.put('/api/profile', signedIn, async (req, res) => {
-    const timeZone = cleanTimeZone(req.body?.timeZone)
-    if (!timeZone) {
+    const refused = firstRefusal([[limits.settingsWriteUser, req.user.id]])
+    if (refused) return tooMany(res, refused.retryAfterSec)
+
+    const body = req.body ?? {}
+    const hasTimeZone = body.timeZone !== undefined
+    const hasZakatDate = body.zakatDate !== undefined
+    const timeZone = hasTimeZone ? cleanTimeZone(body.timeZone) : null
+    if ((!hasTimeZone && !hasZakatDate) || (hasTimeZone && !timeZone)) {
       return res.status(400).json({ error: 'invalid_time_zone', message: 'Unknown time zone.' })
     }
-    await db.ensureProfile(req.user.id, timeZone)
-    await db.updateTimeZone(req.user.id, timeZone)
-    res.json({ ok: true })
+    let zakat = null
+    if (hasZakatDate && body.zakatDate !== null) {
+      const hijri = withinRange(body.zakatDate) ? hijriOfIsoDate(body.zakatDate) : null
+      if (!hijri) return res.status(400).json({ error: 'invalid_zakat_date', message: 'Enter a real date.' })
+      zakat = { date: body.zakatDate, hijriMonth: hijri.month, hijriDay: hijri.day }
+    }
+
+    await db.ensureProfile(req.user.id, timeZone ?? 'UTC')
+    if (timeZone) await db.updateTimeZone(req.user.id, timeZone)
+    if (hasZakatDate) await db.setZakatDate(req.user.id, zakat ?? { date: null, hijriMonth: null, hijriDay: null })
+    res.json({ ok: true, zakatHijriMonth: zakat?.hijriMonth ?? null, zakatHijriDay: zakat?.hijriDay ?? null })
   })
 
   // DELETE /api/account { confirm: 'DELETE', password } — removes the
@@ -94,4 +114,9 @@ export function createAccountRouter({ auth, db, limits }) {
   })
 
   return router
+}
+
+// A Zakat date between 1900 and 2200: wide, but stops nonsense years.
+function withinRange(value) {
+  return typeof value === 'string' && /^(19|20|21)\d{2}-\d{2}-\d{2}$/.test(value) && value <= '2200-12-31'
 }

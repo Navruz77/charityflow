@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { api, browserTimeZone } from '../lib/api.js'
+import { toGregorianDisplay, toHijriDisplay } from '../lib/hijri.js'
 import { useSession } from '../hooks/useSession.jsx'
 import { useOnline } from '../hooks/useOnline.js'
 import { addGuestSave, buildSavedCalculation, MAX_GUEST_SAVES, saveToAccount } from '../lib/savedCalculations.js'
@@ -16,6 +18,14 @@ export default function SaveCalculation({ inputs, result, pricesUsed }) {
   const [busy, setBusy] = useState(false)
   const [savedTo, setSavedTo] = useState(null) // 'device' | 'account'
   const [error, setError] = useState(null)
+  const [offerDate, setOfferDate] = useState(null)
+  const [dateNote, setDateNote] = useState(null)
+
+  async function confirmYearlyDate() {
+    const res = await api('PUT', '/api/profile', { zakatDate: offerDate, timeZone: browserTimeZone() })
+    setOfferDate(null)
+    setDateNote(res.ok ? 'Saved as your yearly Zakat date.' : 'Could not save the date. You can set it on the Reminders page.')
+  }
 
   const record = () => buildSavedCalculation({ inputs, result, pricesUsed })
 
@@ -36,7 +46,15 @@ export default function SaveCalculation({ inputs, result, pricesUsed }) {
     setBusy(true)
     const res = await saveToAccount(record())
     setBusy(false)
-    if (res.ok) return setSavedTo('account')
+    if (res.ok) {
+      setSavedTo('account')
+      // M6: offer this calculation's Zakat date as the yearly one.
+      if (inputs.zakatDate) {
+        const profile = await api('GET', '/api/profile')
+        if (profile.ok && profile.data.zakatDate !== inputs.zakatDate) setOfferDate(inputs.zakatDate)
+      }
+      return
+    }
     if (res.offline) return setError(NEEDS_CONNECTION)
     if (res.status === 401) {
       await session.refresh() // the sign-in ended; show the guest option instead
@@ -51,6 +69,23 @@ export default function SaveCalculation({ inputs, result, pricesUsed }) {
         <FormMessage>
           {savedTo === 'account' ? 'Saved to your account.' : 'Saved on this device only. It is not sent anywhere.'}
         </FormMessage>
+        {offerDate && (
+          <div className="form-stack">
+            <p>
+              Use {toGregorianDisplay(offerDate)} ({toHijriDisplay(offerDate) ?? 'Hijri date not available'}) as your
+              yearly Zakat date? Zakat-month reminders follow it.
+            </p>
+            <div className="btn-row">
+              <button type="button" className="btn btn-primary" onClick={confirmYearlyDate}>
+                Yes, use this date
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setOfferDate(null)}>
+                No, keep my current one
+              </button>
+            </div>
+          </div>
+        )}
+        <FormMessage>{dateNote}</FormMessage>
         <a className="btn btn-secondary" href="#/saved">
           See saved calculations
         </a>

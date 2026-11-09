@@ -1,5 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
-import { isValidFormState, useZakatForm } from '../hooks/useZakatForm.js'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { initialFormState, isValidFormState, useZakatForm } from '../hooks/useZakatForm.js'
+import { useSession } from '../hooks/useSession.jsx'
+import { api } from '../lib/api.js'
 import { clearDraft, loadDraft, saveDraft } from '../lib/formDraft.js'
 import { usePrices } from '../hooks/usePrices.js'
 import { NO_CONNECTION_NO_PRICES } from '../lib/prices.js'
@@ -49,6 +51,23 @@ export default function CalculatorPage() {
   // the same entries and the same prices, so it comes back unchanged.
   const [shown, setShown] = useState(() => (draft?.showResult ? rerun(calculate, draft.pricesUsed) : null))
 
+  // S1.10 (last criterion): signed-in users start with their account's
+  // Zakat date filled in. Never overwrites a date already in the form.
+  const session = useSession()
+  const accountZakatDate = useRef(null)
+  useEffect(() => {
+    if (!session.signedIn) return undefined
+    let cancelled = false
+    api('GET', '/api/profile').then((res) => {
+      if (cancelled || !res.ok || !res.data.zakatDate) return
+      accountZakatDate.current = res.data.zakatDate
+      setForm((f) => (f.zakatDate ? f : { ...f, zakatDate: res.data.zakatDate }))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session.signedIn, setForm])
+
   // Keep the draft up to date after every change.
   useEffect(() => {
     saveDraft({ form, stepIndex, pricesUsed: shown?.pricesUsed ?? null, showResult: shown !== null })
@@ -72,6 +91,7 @@ export default function CalculatorPage() {
 
   const handleStartOver = () => {
     resetForm()
+    if (accountZakatDate.current) setForm({ ...initialFormState(), zakatDate: accountZakatDate.current })
     clearDraft()
     setShown(null)
     setErrors([])

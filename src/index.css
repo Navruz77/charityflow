@@ -421,3 +421,47 @@ a.btn {
 .strength-meter span.on.s1 {
   background: var(--danger);
 }
+
+/* M6: reminders */
+.badge {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: var(--space-1);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.reminder-item {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reminder-item.unread {
+  border-left: 4px solid var(--accent);
+  padding-left: var(--space-3);
+}
+
+.reminder-item .btn {
+  align-self: flex-start;
+}
+
+.reminder-pref {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reminder-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding-left: var(--space-5);
+}

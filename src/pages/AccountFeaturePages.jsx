@@ -1,8 +1,8 @@
 import { useSession } from '../hooks/useSession.jsx'
 import { NeedsConnection } from '../components/Connection.jsx'
 
-// Reminders (M6) and the giving planner (M7) need an account. Until those
-// milestones land, these pages show the S3.1 rule: a guest who opens an
+// The giving planner (M7) needs an account. Until M7 lands, this page
+// shows the S3.1 rule: a guest who opens an
 // account feature is told why and offered registration.
 function AccountFeature({ title, why }) {
   const session = useSession()
@@ -33,10 +33,6 @@ function AccountFeature({ title, why }) {
       <p>This part of CharityFlow is coming soon.</p>
     </div>
   )
-}
-
-export function RemindersPage() {
-  return <AccountFeature title="Reminders" why="Reminders arrive by email or in the app on your own local day." />
 }
 
 export function PlannerPage() {

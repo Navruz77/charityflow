@@ -9,7 +9,8 @@ import ResetPage from './pages/ResetPage.jsx'
 import ConfirmPage from './pages/ConfirmPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
 import SavedPage from './pages/SavedPage.jsx'
-import { PlannerPage, RemindersPage } from './pages/AccountFeaturePages.jsx'
+import RemindersPage from './pages/RemindersPage.jsx'
+import { PlannerPage } from './pages/AccountFeaturePages.jsx'
 
 export const routes = [
   { path: '/', label: 'Home', component: HomePage },

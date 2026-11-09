@@ -66,7 +66,7 @@ month, credit link "Metal prices by MetalCharts" required next to public prices)
 free key (backup; last daily settlement; `name=gold` / `name=silver`, `unit=g`).
 To create: the Render web service. Render env vars to set: `SUPABASE_URL`,
 `SUPABASE_SECRET_KEY`, `METALCHARTS_API_KEY`, `API_NINJAS_KEY`, `BREVO_API_KEY`, `JOB_TOKEN`,
-`SESSION_SECRET`. GitHub secret: `JOB_TOKEN` (plus the app URL).
+`SESSION_SECRET`, `BREVO_SENDER_EMAIL`. GitHub secret: `JOB_TOKEN` (plus the app URL).
 
 ## Milestones (build order)
 
@@ -121,7 +121,7 @@ last-response fallback. Offline banner. First-visit note (open online once; on i
 Home Screen). Keep the in-progress form in `sessionStorage` and restore it after any reload
 (autoUpdate may reload the page). Calculation under 1 second.
 
-**M6 Reminders.** Stories S6.1, S6.3 to S6.5. Zakat date (Gregorian + Hijri month/day), four
+**M6 Reminders: BUILT** — in-app path verified live locally; email + hourly workflow need the Brevo/JOB_TOKEN settings (see Status). Stories S6.1, S6.3 to S6.5. Zakat date (Gregorian + Hijri month/day), four
 reminder types (zakatMonth, ramadan, friday, dhulHijjah), all off by default, in-app and/or
 email each. Hourly workflow calls `POST /api/jobs/reminders` with `JOB_TOKEN`; the server decides
 each user's local date and Hijri date from the stored time zone, skips before 09:00 local,
@@ -217,6 +217,30 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Step 5 — M6 reminders, built (2026-11-08).** No SQL needed (tables from M4). Pure logic in
+`server/reminders/decideReminders.js` (local date/hour/weekday and Hijri month/day per user time
+zone via `src/lib/hijriParts.js`, the same Intl Umm al-Qura method as the screens; nothing before
+09:00 local; first run after 9 sends). `runReminderJob.js` inserts each `reminders_sent` row with
+ignore-duplicates and sends email only when the row was new; if Brevo fails the row is deleted so
+the next hourly run retries (unknown 3). `POST /api/jobs/reminders` needs `Authorization: Bearer
+<JOB_TOKEN>` (≥32 chars, constant-time compare, per-IP limit); `{asOf}` = dry run that writes and
+sends nothing and shows users only as "user 1, user 2" (Actions logs are public). Routes:
+`GET|PUT /api/reminder-prefs` (exactly the four types, booleans, on needs a channel, saves the
+browser time zone — unknown 4), `GET /api/reminders` (last 30 days in-app), `POST
+/api/reminders/read`, `PUT /api/profile {zakatDate}` (server computes the Hijri month/day; null
+removes). Email via `server/reminders/brevo.js` (env `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`), text
+from `src/content/reminderText.js`, no figures, link to `#/reminders`. Screens: `#/reminders`
+(in-app list, Zakat date set/change/remove with Hijri month, four types with in-app/email),
+header Reminders link with unread badge, calculator pre-fills the account Zakat date, "use this
+as your yearly Zakat date?" after Save to my account. Workflow `.github/workflows/reminders.yml`
+hourly at :07 + manual dry run (`as_of`), token and as-of passed via env/jq. Tests 183/183 (all
+plan dry-run cases, twice-in-an-hour/day, two time zones, Brevo-failure retry, off stops next
+occasion, routes, token). Live local run against real Supabase: 13/13 (dry run writes nothing,
+real run 1 in-app row on the user's local date, second run 0, read). Headless Chrome 12/12.
+**Needs the user before it is live:** Render env vars `JOB_TOKEN` (value in local `.env`),
+`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`; GitHub secret `JOB_TOKEN`. Then: a real email reminder,
+and the hourly workflow running unaided twice.
 
 **Step 4 closed — M5 DONE (2026-11-08).** First live iPhone airplane-mode test failed: the
 offline calculator said it could not work out the nisab, with the service worker's raw
