@@ -6,7 +6,7 @@
 //     the same prices, and must match what the browser showed. The stored
 //     result is the server's own copy, so a saved row can't hold numbers the
 //     engine never produced.
-import { calculateZakat } from '../../src/engine/calculateZakat.js'
+import { calculateZakat, DEBT_FIELDS } from '../../src/engine/calculateZakat.js'
 import { isValidIsoDate, MAX_CENTS, MAX_ITEMS_PER_LIST as LIST_MAX } from '../../src/lib/inputRules.js'
 
 // Limits that keep one row small. Far above anything a real person enters.
@@ -117,10 +117,11 @@ export function cleanInputs(raw) {
       zakatableSharePct: pctOrDefault(r.zakatableSharePct, `${f}.zakatableSharePct`),
       penaltyTaxCents: cents(r.penaltyTaxCents ?? 0, `${f}.penaltyTaxCents`),
     })),
-    debts: {
-      dueNowCents: cents(debts.dueNowCents, 'debts.dueNowCents'),
-      installments12mCents: cents(debts.installments12mCents, 'debts.installments12mCents'),
-    },
+    // Kinds missing from older saves (or the retired installments box) count as 0.
+    debts: Object.fromEntries(DEBT_FIELDS.map((k) => [k, cents(debts[k] ?? 0, `debts.${k}`)])),
+    unpaidZakat: list(raw.unpaidZakat, 'unpaidZakat', (y, f) => ({
+      amountCents: cents(y.amountCents, `${f}.amountCents`),
+    })),
     nisab: oneOf(raw.nisab, ['gold', 'silver'], 'nisab'),
     heldOneLunarYear: oneOf(raw.heldOneLunarYear, [true, false], 'heldOneLunarYear'),
     zakatDate: raw.zakatDate === null || raw.zakatDate === undefined || raw.zakatDate === '' ? null : isoDate(raw.zakatDate, 'zakatDate'),
@@ -173,7 +174,7 @@ export function cleanCalculation(body, now = Date.now()) {
     const savedAt = body.savedAt === undefined ? new Date(now).toISOString() : pastTimestamp(body.savedAt, 'savedAt', now)
 
     const result = calculateZakat(inputs, pricesUsed)
-    if (!result.ok || !['due', 'belowNisab', 'notYetDue'].includes(result.status)) throw new Invalid('inputs')
+    if (!result.ok || !['due', 'belowNisab', 'notYetDue', 'unpaidPriorOnly'].includes(result.status)) throw new Invalid('inputs')
     if (!isObject(body.result)) throw new Invalid('result')
     for (const [field, pick] of COMPARED) {
       if (pick(body.result) !== pick(result)) throw new Invalid(`result.${field}`)

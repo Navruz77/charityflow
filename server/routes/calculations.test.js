@@ -157,6 +157,27 @@ describe('save to my account (S4.2)', () => {
     expect(JSON.stringify(list.data)).not.toContain('user_id')
   })
 
+  it('stores the new debt boxes and unpaid Zakat, with an older save still accepted', async () => {
+    const newShape = makeCalc({
+      inputs: {
+        gems: undefined,
+        debts: { dueNowCents: 0, creditCardCents: 20000, mortgageNextPrincipalCents: 0, personalLoansCents: 0, owedToFamilyCents: 0, unpaidTaxesBillsCents: 0, otherLiabilitiesCents: 0 },
+        unpaidZakat: [{ amountCents: 300000 }],
+      },
+    })
+    expect((await save('token-a', newShape)).status).toBe(201)
+    expect(rows[0].inputs.debts.creditCardCents).toBe(20000)
+    expect(rows[0].inputs.unpaidZakat).toEqual([{ amountCents: 300000 }])
+    expect(rows[0].result.zakatDueCents).toBe(newShape.result.zakatDueCents)
+    expect(rows[0].result.unpaidPriorZakatCents).toBe(300000)
+    // Below nisab this year, but last year's Zakat is still owed.
+    const onlyPrior = makeCalc({ inputs: { cashCents: 0, gold: { grams: '', valueCents: null }, unpaidZakat: [{ amountCents: 300000 }] } })
+    expect(onlyPrior.result.status).toBe('unpaidPriorOnly')
+    expect((await save('token-a', onlyPrior)).status).toBe(201)
+    // makeCalc's default is the older shape (gems, installments box).
+    expect((await save('token-a', makeCalc())).status).toBe(201)
+  })
+
   it('ignores a user id sent in the body', async () => {
     await save('token-a', makeCalc({ top: { user_id: USER_B.id, userId: USER_B.id } }))
     expect(rows[0].user_id).toBe(USER_A.id)
@@ -184,6 +205,9 @@ describe('server checks what it stores', () => {
       [{ inputs: { gems: [{ purpose: 'hack', valueCents: 0 }] } }, 'gems[0].purpose'],
       [{ inputs: { gems: Array.from({ length: 26 }, () => ({ purpose: 'personal', valueCents: 0 })) } }, 'gems'],
       [{ inputs: { nisab: 'platinum' } }, 'nisab'],
+      [{ inputs: { debts: { creditCardCents: -1 } } }, 'debts.creditCardCents'],
+      [{ inputs: { unpaidZakat: [{ amountCents: 'lots' }] } }, 'unpaidZakat[0].amountCents'],
+      [{ inputs: { unpaidZakat: Array.from({ length: 26 }, () => ({ amountCents: 0 })) } }, 'unpaidZakat'],
       [{ inputs: { heldOneLunarYear: 'yes' } }, 'heldOneLunarYear'],
       [{ inputs: { zakatDate: '2026-13-45' } }, 'zakatDate'],
       [{ inputs: { securities: [{ purpose: 'longTerm', valueCents: 0, zakatableSharePct: 150 }] } }, 'securities[0].zakatableSharePct'],

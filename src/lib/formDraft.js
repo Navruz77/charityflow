@@ -5,7 +5,7 @@
 // close the tab. Every read and write is wrapped in try/catch and checked.
 
 export const DRAFT_KEY = 'cf.v1.draft'
-const DRAFT_VERSION = 1
+const DRAFT_VERSION = 2 // 2: gems step removed, unpaid-Zakat step added
 
 // Before M5 the form was kept in localStorage under this key. B.3 allows
 // only three localStorage keys, so it is removed on load.

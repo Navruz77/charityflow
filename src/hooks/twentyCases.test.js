@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateZakat } from '../engine/calculateZakat.js'
-import { buildEngineInputs, initialFormState, emptyGem, emptySecurity, emptyCrypto, emptyRealEstate, emptyRental, emptyBusiness, emptyRetirement } from './useZakatForm.js'
+import { buildEngineInputs, initialFormState, emptySecurity, emptyCrypto, emptyRealEstate, emptyRental, emptyBusiness, emptyRetirement } from './useZakatForm.js'
 import { buildSavedCalculation } from '../lib/savedCalculations.js'
 import { cleanCalculation } from '../../server/calculations/cleanCalculation.js'
 
@@ -56,12 +56,15 @@ const cases = [
   },
   {
     name: '8. Gems held for resale count',
-    build: () => form({ gems: [{ ...emptyGem(), valueCents: '2000.00', purpose: 'resale' }] }),
+    // Gems are no longer on the screens; older saves still hold them, so the engine is checked directly.
+    build: () => form(),
+    extra: { gems: [{ valueCents: 200000, purpose: 'resale' }] },
     expected: { netCents: 200000, status: 'due', zakatDueCents: 5000 },
   },
   {
     name: '9. Gems for personal use are excluded',
-    build: () => form({ gems: [{ ...emptyGem(), valueCents: '2000.00', purpose: 'personal' }] }),
+    build: () => form(),
+    extra: { gems: [{ valueCents: 200000, purpose: 'personal' }] },
     expected: { netCents: 0, status: 'belowNisab', zakatDueCents: 0 },
   },
   {
@@ -119,15 +122,19 @@ const cases = [
   },
   {
     name: '20. Debts due now and installments are subtracted',
-    build: () => form({ cashCents: '3000.00', debts: { dueNowCents: '500.00', installments12mCents: '300.00' } }),
+    // The installments box is no longer on the screens; older saves still hold it.
+    build: () => form({ cashCents: '3000.00' }),
+    extra: { debts: { dueNowCents: 50000, installments12mCents: 30000 } },
     expected: { netCents: 220000, status: 'due', zakatDueCents: 5500 },
   },
 ]
 
 describe('the 20 confirmed cases, entered through the screens', () => {
-  for (const { name, build, expected } of cases) {
+  for (const { name, build, extra, expected } of cases) {
     it(name, () => {
-      const { inputs, localErrors } = buildEngineInputs(build())
+      const built = buildEngineInputs(build())
+      const inputs = { ...built.inputs, ...extra }
+      const { localErrors } = built
       expect(localErrors).toEqual([])
       const r = calculateZakat(inputs, prices)
       expect(r.ok).toBe(true)
@@ -146,9 +153,9 @@ describe('the 20 confirmed cases, entered through the screens', () => {
 // (S4.2 "the row holds every field", S3.5 "keeps the original results").
 describe('the 20 cases can be saved to an account unchanged', () => {
   const pricesUsed = { ...prices, fetchedAt: '2026-11-01T06:00:12.000Z' }
-  for (const { name, build } of cases) {
+  for (const { name, build, extra } of cases) {
     it(name, () => {
-      const { inputs } = buildEngineInputs(build())
+      const inputs = { ...buildEngineInputs(build()).inputs, ...extra }
       const result = { ...calculateZakat(inputs, pricesUsed), errors: [], ok: true }
       const saved = buildSavedCalculation({ inputs, result, pricesUsed })
       const overTheWire = JSON.parse(JSON.stringify(saved))

@@ -1,5 +1,6 @@
 import ProgressIndicator from '../ProgressIndicator.jsx'
 import { describeField, getErrorMessage } from '../../content/errorText.js'
+import { centsToDisplay, dollarsTextToCents } from '../../lib/money.js'
 
 // Shows every entered value before calculating, with an "Edit" link back
 // to the step that owns it. Blank fields are shown as $0 so nothing looks
@@ -20,6 +21,13 @@ function Row({ label, value, onEdit }) {
 
 export default function StepSummary({ step, total, form, goToStep, onCalculate, errors = [] }) {
   const dollar = (v) => (v ? `$${v}` : '')
+  // Adds up several typed amounts for one row. Blank if all are blank;
+  // an entry that isn't a valid amount is listed in the errors instead.
+  const sumOf = (texts) => {
+    if (texts.every((t) => !t)) return ''
+    const sum = texts.reduce((acc, t) => acc + (dollarsTextToCents(t) ?? 0), 0)
+    return centsToDisplay(sum)
+  }
 
   return (
     <div className="card">
@@ -31,14 +39,18 @@ export default function StepSummary({ step, total, form, goToStep, onCalculate, 
       <Row label="Savings" value={dollar(form.savingsCents)} onEdit={() => goToStep(0)} />
       <Row label="Gold value" value={dollar(form.gold.valueCents)} onEdit={() => goToStep(1)} />
       <Row label="Silver value" value={dollar(form.silver.valueCents)} onEdit={() => goToStep(1)} />
-      <Row label={`Gems (${form.gems.length})`} value="" onEdit={() => goToStep(2)} />
-      <Row label={`Stocks and funds (${form.securities.length})`} value="" onEdit={() => goToStep(3)} />
-      <Row label={`Crypto (${form.crypto.length})`} value="" onEdit={() => goToStep(4)} />
-      <Row label={`Real estate for sale (${form.realEstateForSale.length})`} value="" onEdit={() => goToStep(5)} />
-      <Row label={`Rentals (${form.rentals.length})`} value="" onEdit={() => goToStep(6)} />
-      <Row label={`Businesses (${form.businesses.length})`} value="" onEdit={() => goToStep(7)} />
-      <Row label={`Retirement accounts (${form.retirement.length})`} value="" onEdit={() => goToStep(8)} />
-      <Row label="Debts due now" value={dollar(form.debts.dueNowCents)} onEdit={() => goToStep(9)} />
+      <Row label={`Stocks and funds (${form.securities.length})`} value="" onEdit={() => goToStep(2)} />
+      <Row label={`Crypto (${form.crypto.length})`} value="" onEdit={() => goToStep(3)} />
+      <Row label={`Real estate for sale (${form.realEstateForSale.length})`} value="" onEdit={() => goToStep(4)} />
+      <Row label={`Rentals (${form.rentals.length})`} value="" onEdit={() => goToStep(5)} />
+      <Row label={`Businesses (${form.businesses.length})`} value="" onEdit={() => goToStep(6)} />
+      <Row label={`Retirement accounts (${form.retirement.length})`} value="" onEdit={() => goToStep(7)} />
+      <Row label="Debts (total)" value={sumOf(Object.values(form.debts))} onEdit={() => goToStep(8)} />
+      <Row
+        label={`Unpaid Zakat from previous years (${form.unpaidZakat.length})`}
+        value={sumOf(form.unpaidZakat.map((y) => y.amountCents))}
+        onEdit={() => goToStep(9)}
+      />
       <Row label="Nisab" value={form.nisab} onEdit={() => goToStep(10)} />
 
       {errors.length > 0 && (

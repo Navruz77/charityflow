@@ -7,7 +7,6 @@ import { usePrices } from '../hooks/usePrices.js'
 import { NO_CONNECTION_NO_PRICES } from '../lib/prices.js'
 import StepCashSavings from '../components/steps/StepCashSavings.jsx'
 import StepGoldSilver from '../components/steps/StepGoldSilver.jsx'
-import StepGems from '../components/steps/StepGems.jsx'
 import StepStocksFunds from '../components/steps/StepStocksFunds.jsx'
 import StepCrypto from '../components/steps/StepCrypto.jsx'
 import StepRealEstateForSale from '../components/steps/StepRealEstateForSale.jsx'
@@ -15,16 +14,16 @@ import StepRentals from '../components/steps/StepRentals.jsx'
 import StepBusinesses from '../components/steps/StepBusinesses.jsx'
 import StepRetirement from '../components/steps/StepRetirement.jsx'
 import StepDebts from '../components/steps/StepDebts.jsx'
+import StepUnpaidZakat from '../components/steps/StepUnpaidZakat.jsx'
 import StepSettings from '../components/steps/StepSettings.jsx'
 import StepSummary from '../components/steps/StepSummary.jsx'
-import { ReviewShortcut } from '../components/StepShell.jsx'
+import { ReviewShortcut } from '../components/ReviewShortcut.js'
 
 const ResultsPage = lazy(() => import('./ResultsPage.jsx'))
 
 const STEPS = [
   StepCashSavings,
   StepGoldSilver,
-  StepGems,
   StepStocksFunds,
   StepCrypto,
   StepRealEstateForSale,
@@ -32,6 +31,7 @@ const STEPS = [
   StepBusinesses,
   StepRetirement,
   StepDebts,
+  StepUnpaidZakat,
   StepSettings,
 ]
 const TOTAL_STEPS = STEPS.length + 1 // + the summary step

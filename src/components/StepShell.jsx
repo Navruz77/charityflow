@@ -1,10 +1,6 @@
-import { createContext, useContext, useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import ProgressIndicator from './ProgressIndicator.jsx'
-
-// Once someone has reached the review screen, CalculatorPage provides a
-// function here so every step can jump straight back to the review instead
-// of clicking Next through all the remaining steps. null = not reached yet.
-export const ReviewShortcut = createContext(null)
+import { ReviewShortcut } from './ReviewShortcut.js'
 
 // Wraps one step: heading (focused on mount for keyboard/screen-reader
 // users), progress, the step's fields, and back/next controls.

@@ -41,3 +41,31 @@ describe('buildEngineInputs', () => {
     expect(result.zakatDueCents).toBe(24628)
   })
 })
+
+describe('new debt boxes and unpaid Zakat, entered as typed', () => {
+  const prices = { goldUsdPerGram: 134.34, silverUsdPerGram: 1.96 }
+  it('the form has no gems and no installments box', () => {
+    const f = initialFormState()
+    expect(f.gems).toBeUndefined()
+    expect(f.debts.installments12mCents).toBeUndefined()
+    expect(Object.keys(f.debts)).toHaveLength(7)
+  })
+  it("$40,000 cash, $3,000 unpaid from last year: $1,000 + $3,000 = $4,000", () => {
+    const form = {
+      ...initialFormState(),
+      nisab: 'silver',
+      heldOneLunarYear: true,
+      cashCents: '40,000.00',
+      debts: { ...initialFormState().debts, creditCardCents: '0' },
+      unpaidZakat: [{ amountCents: '3,000' }],
+    }
+    const { inputs, localErrors } = buildEngineInputs(form)
+    expect(localErrors).toEqual([])
+    const r = calculateZakat(inputs, prices)
+    expect(r.zakatDueCents).toBe(400000)
+  })
+  it('bad text in a new box names that box', () => {
+    const form = { ...initialFormState(), debts: { ...initialFormState().debts, owedToFamilyCents: '12.345' } }
+    expect(buildEngineInputs(form).localErrors).toEqual([{ field: 'debts.owedToFamilyCents', code: 'notANumber' }])
+  })
+})

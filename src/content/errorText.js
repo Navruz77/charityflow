@@ -26,13 +26,13 @@ export function getErrorMessage(field, code) {
 // Field path -> the calculator step that holds it (index), and a readable
 // name, for the list of problems on the review screen.
 const LISTS = {
-  gems: [2, 'Gem'],
-  securities: [3, 'Holding'],
-  crypto: [4, 'Crypto holding'],
-  realEstateForSale: [5, 'Property'],
-  rentals: [6, 'Rental'],
-  businesses: [7, 'Business'],
-  retirement: [8, 'Retirement account'],
+  securities: [2, 'Holding'],
+  crypto: [3, 'Crypto holding'],
+  realEstateForSale: [4, 'Property'],
+  rentals: [5, 'Rental'],
+  businesses: [6, 'Business'],
+  retirement: [7, 'Retirement account'],
+  unpaidZakat: [9, 'Unpaid year'],
 }
 const PARTS = {
   valueCents: 'value',
@@ -46,6 +46,7 @@ const PARTS = {
   liabilitiesCents: 'liabilities',
   vestedBalanceCents: 'vested balance',
   penaltyTaxCents: 'penalty or tax',
+  amountCents: 'amount',
 }
 const SINGLE = {
   cashCents: [0, 'Cash'],
@@ -54,8 +55,13 @@ const SINGLE = {
   'gold.valueCents': [1, 'Value of gold'],
   'silver.grams': [1, 'Grams of silver'],
   'silver.valueCents': [1, 'Value of silver'],
-  'debts.dueNowCents': [9, 'Debts due now'],
-  'debts.installments12mCents': [9, 'Installments in the next 12 months'],
+  'debts.dueNowCents': [8, 'Debts due now'],
+  'debts.creditCardCents': [8, 'Credit card balances'],
+  'debts.mortgageNextPrincipalCents': [8, 'Mortgage (next principal payment)'],
+  'debts.personalLoansCents': [8, 'Personal loans due this year'],
+  'debts.owedToFamilyCents': [8, 'Money owed to family or friends'],
+  'debts.unpaidTaxesBillsCents': [8, 'Unpaid taxes & bills'],
+  'debts.otherLiabilitiesCents': [8, 'Other liabilities'],
   zakatDate: [10, 'Zakat date'],
 }
 

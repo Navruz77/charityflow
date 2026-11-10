@@ -8,6 +8,19 @@ export const DEFAULT_SECURITIES_SHARE_PCT = 30
 export const DEFAULT_RETIREMENT_SHARE_PCT = 100
 export const DEFAULT_BUSINESS_OWNERSHIP_PCT = 100
 
+// Every kind of debt the engine subtracts, in screen order.
+// `installments12mCents` is kept only for older saved calculations.
+export const DEBT_FIELDS = [
+  'dueNowCents',
+  'creditCardCents',
+  'mortgageNextPrincipalCents',
+  'personalLoansCents',
+  'owedToFamilyCents',
+  'unpaidTaxesBillsCents',
+  'otherLiabilitiesCents',
+  'installments12mCents',
+]
+
 const pct = (cents, p) => Math.round((cents * p) / 100)
 
 // Reads a money/number field. Blank = 0. Non-numeric text names the field
@@ -155,12 +168,23 @@ export function calculateZakat(inputs = {}, prices = {}) {
     .filter((l) => l.treatment !== 'excluded')
     .reduce((sum, l) => sum + l.valueCents, 0)
 
+  // Debts: every amount entered is subtracted in full. `installments12mCents`
+  // is no longer on the screens but is still read, so calculations saved
+  // before it was removed give the same answer.
   const debts = inputs.debts || {}
-  const debtsSubtracted = {
-    dueNowCents: cents('debts.dueNowCents', debts.dueNowCents),
-    installments12mCents: cents('debts.installments12mCents', debts.installments12mCents),
+  const debtsSubtracted = {}
+  for (const key of DEBT_FIELDS) {
+    debtsSubtracted[key] = cents(`debts.${key}`, debts[key])
   }
-  const netCents = Math.max(0, totalZakatableCents - debtsSubtracted.dueNowCents - debtsSubtracted.installments12mCents)
+  const totalDebtsCents = Object.values(debtsSubtracted).reduce((sum, c) => sum + c, 0)
+  const netCents = Math.max(0, totalZakatableCents - totalDebtsCents)
+
+  // Zakat left unpaid from previous years is still owed. It is added on top
+  // of this year's amount (one entry per year), whatever this year's status.
+  const unpaidPriorZakatCents = (inputs.unpaidZakat || []).reduce(
+    (sum, y, i) => sum + cents(`unpaidZakat[${i}].amountCents`, y.amountCents),
+    0,
+  )
 
   // Nisab and hawl must be explicitly chosen. Missing either gives no
   // result instead of silently defaulting.
@@ -168,7 +192,7 @@ export function calculateZakat(inputs = {}, prices = {}) {
   const hawlKnown = typeof inputs.heldOneLunarYear === 'boolean'
 
   let status
-  let zakatDueCents = 0
+  let thisYearZakatCents = 0
   let nisabInfo = { choice: null, grams: null, pricePerGram: null, valueCents: null }
 
   if (!nisabChoice) {
@@ -187,9 +211,16 @@ export function calculateZakat(inputs = {}, prices = {}) {
       status = 'notYetDue'
     } else {
       status = 'due'
-      zakatDueCents = Math.round(netCents / ZAKAT_RATE_DIVISOR)
+      thisYearZakatCents = Math.round(netCents / ZAKAT_RATE_DIVISOR)
     }
   }
+
+  // Past years' unpaid Zakat is due even when nothing is due this year.
+  // It only shows once nisab and the one-year question are answered.
+  const answered = status === 'due' || status === 'belowNisab' || status === 'notYetDue'
+  const unpaidCounted = answered ? unpaidPriorZakatCents : 0
+  if (status !== 'due' && unpaidCounted > 0) status = 'unpaidPriorOnly'
+  const zakatDueCents = thisYearZakatCents + unpaidCounted
 
   return {
     ok: errors.length === 0,
@@ -200,7 +231,9 @@ export function calculateZakat(inputs = {}, prices = {}) {
     debtsSubtracted,
     nisab: nisabInfo,
     status,
-    zakatDueCents,
+    thisYearZakatCents,
+    unpaidPriorZakatCents: unpaidCounted,
+    zakatDueCents, // this year + unpaid from previous years
     zakatDate: inputs.zakatDate ?? null,
     pricesUsed: { goldUsdPerGram: goldPrice, silverUsdPerGram: silverPrice },
   }

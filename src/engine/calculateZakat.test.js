@@ -105,7 +105,7 @@ describe('categories', () => {
 describe('debts and status', () => {
   it('subtracts debts due now and 12-month installments', () => {
     const r = calc({ cashCents: 500000, debts: { dueNowCents: 100000, installments12mCents: 50000 } })
-    expect(r.debtsSubtracted).toEqual({ dueNowCents: 100000, installments12mCents: 50000 })
+    expect(r.debtsSubtracted).toMatchObject({ dueNowCents: 100000, installments12mCents: 50000, creditCardCents: 0 })
     expect(r.netCents).toBe(350000)
     expect(r.zakatDueCents).toBe(8750)
   })
@@ -162,5 +162,66 @@ describe('performance', () => {
     const t = performance.now()
     for (let i = 0; i < 1000; i++) calculateZakat(input, prices)
     expect(performance.now() - t).toBeLessThan(1000)
+  })
+})
+
+describe('debts (every kind is subtracted in full)', () => {
+  it('subtracts all seven debt boxes', () => {
+    const debts = {
+      dueNowCents: 1000,
+      creditCardCents: 2000,
+      mortgageNextPrincipalCents: 3000,
+      personalLoansCents: 4000,
+      owedToFamilyCents: 5000,
+      unpaidTaxesBillsCents: 6000,
+      otherLiabilitiesCents: 7000,
+    }
+    const r = calc({ cashCents: 1000000, debts })
+    expect(r.netCents).toBe(1000000 - 28000)
+    expect(r.debtsSubtracted.creditCardCents).toBe(2000)
+  })
+  it('still subtracts the retired installments field in older saves', () => {
+    expect(calc({ cashCents: 300000, debts: { dueNowCents: 50000, installments12mCents: 30000 } }).netCents).toBe(220000)
+  })
+  it('a negative debt is an error naming the field', () => {
+    expect(calc({ debts: { creditCardCents: -1 } }).errors).toEqual([{ field: 'debts.creditCardCents', code: 'negative' }])
+  })
+})
+
+describe('unpaid Zakat from previous years', () => {
+  it("is added to this year's Zakat ($1,000 this year + $3,000 last year = $4,000)", () => {
+    const r = calc({ cashCents: 4000000, unpaidZakat: [{ amountCents: 300000 }] })
+    expect(r.status).toBe('due')
+    expect(r.thisYearZakatCents).toBe(100000)
+    expect(r.unpaidPriorZakatCents).toBe(300000)
+    expect(r.zakatDueCents).toBe(400000)
+  })
+  it('adds up several years', () => {
+    const r = calc({ cashCents: 4000000, unpaidZakat: [{ amountCents: 300000 }, { amountCents: 25050 }] })
+    expect(r.zakatDueCents).toBe(100000 + 325050)
+  })
+  it('is still due when this year is below nisab', () => {
+    const r = calc({ cashCents: 100, unpaidZakat: [{ amountCents: 300000 }] })
+    expect(r.status).toBe('unpaidPriorOnly')
+    expect(r.thisYearZakatCents).toBe(0)
+    expect(r.zakatDueCents).toBe(300000)
+  })
+  it('is still due when this year is not yet a full lunar year', () => {
+    const r = calc({ cashCents: 4000000, heldOneLunarYear: false, unpaidZakat: [{ amountCents: 300000 }] })
+    expect(r.status).toBe('unpaidPriorOnly')
+    expect(r.zakatDueCents).toBe(300000)
+  })
+  it('gives no amount until nisab is chosen', () => {
+    const r = calc({ nisab: null, unpaidZakat: [{ amountCents: 300000 }] })
+    expect(r.status).toBe('needsNisab')
+    expect(r.zakatDueCents).toBe(0)
+  })
+  it('blank or zero years change nothing', () => {
+    const r = calc({ cashCents: 4000000, unpaidZakat: [{ amountCents: 0 }, {}] })
+    expect(r.status).toBe('due')
+    expect(r.zakatDueCents).toBe(100000)
+  })
+  it('a negative amount is an error naming the year', () => {
+    expect(calc({ unpaidZakat: [{ amountCents: -5 }] }).errors).toEqual([{ field: 'unpaidZakat[0].amountCents', code: 'negative' }])
   })
 })

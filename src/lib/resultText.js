@@ -3,6 +3,8 @@ export const STATUS_COPY = {
   due: { className: 'due', title: 'Zakat is due' },
   belowNisab: { className: 'below', title: 'Below nisab — no Zakat due' },
   notYetDue: { className: 'notyet', title: 'Not yet due' },
+  // Nothing is due on this year's wealth, but past years' Zakat still is.
+  unpaidPriorOnly: { className: 'due', title: 'Unpaid Zakat from previous years is due' },
   needsNisab: { className: 'notyet', title: 'Choose a nisab to see your result' },
   needsHawl: { className: 'notyet', title: 'Answer the one-year question to see your result' },
 }

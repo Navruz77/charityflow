@@ -158,20 +158,27 @@ A saved calculation: `id`, `savedAt`, `zakatDate {gregorian, hijri}`, `inputs`, 
 
 ### Engine (B.4): `calculateZakat(inputs, prices)`
 Inputs: `cashCents`, `savingsCents`; `gold` and `silver` as `{grams, valueCents}` (enter one;
-if only grams, value = grams x price); `gems [{valueCents, purpose personal|resale}]`;
+if only grams, value = grams x price); `gems [{valueCents, purpose personal|resale}]` (no longer
+on the screens since 2026-11-10; still read so older saves give the same answer);
 `securities [{valueCents, purpose trade|longTerm, zakatableSharePct (default 30), countInFull}]`;
 `crypto [{valueCents, purpose}]`; `realEstateForSale [{valueCents}]`;
 `rentals [{rentCollectedUnspentCents, expensesPaidCents}]`;
 `businesses [{ownershipPct (default 100), cashCents, inventoryCents, receivablesCents,
 liabilitiesCents}]`; `retirement [{vestedBalanceCents, method annual|whenAccessible,
 zakatableSharePct (default 100), penaltyTaxCents (default 0)}]`;
-`debts {dueNowCents, installments12mCents}`; `nisab gold|silver` (no result until set);
+`debts {dueNowCents, creditCardCents, mortgageNextPrincipalCents, personalLoansCents,
+owedToFamilyCents, unpaidTaxesBillsCents, otherLiabilitiesCents}` (each subtracted in full;
+`installments12mCents` is still read for older saves); `unpaidZakat [{amountCents}]` (Zakat
+unpaid from earlier years, max 25); `nisab gold|silver` (no result until set);
 `heldOneLunarYear` boolean (no result until set); `zakatDate` YYYY-MM-DD (stored, does not
 change the amount). Prices: `{goldUsdPerGram, silverUsdPerGram, fetchedAt}`.
 Result: `ok`, `lines [{category, valueCents, treatment full|reduced|excluded, reasonKey}]`,
-`totalZakatableCents`, `netCents` (never below 0), `debtsSubtracted {dueNowCents,
-installments12mCents}`, `nisab {choice, grams, pricePerGram, valueCents}`, `status
-due|belowNisab|notYetDue`, `zakatDueCents`, `pricesUsed`, `errors [{field, code}]` with code
+`totalZakatableCents`, `netCents` (never below 0), `debtsSubtracted` (one entry per debt kind
+above), `nisab {choice, grams, pricePerGram, valueCents}`, `status
+due|belowNisab|notYetDue|unpaidPriorOnly` (`unpaidPriorOnly`: nothing due this year but earlier
+years' Zakat is), `thisYearZakatCents`, `unpaidPriorZakatCents`, `zakatDueCents` (this year +
+unpaid earlier years; earlier years count only once nisab and the one-year question are
+answered), `pricesUsed`, `errors [{field, code}]` with code
 `negative|notANumber|missingPrice`.
 Rules: nisab 87.48 g gold or 612.36 g silver; rate 2.5%; wealth exactly at nisab is due; round
 each computed value to the cent (halves up) and Zakat once at the end; blank means 0;
@@ -217,6 +224,27 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Calculator: gems removed, new debt boxes, unpaid Zakat step (2026-11-10).** At the user's
+request (engine change asked for). Steps are now: Cash and savings, Gold and silver, Stocks and
+funds, Crypto, Real estate for sale, Rentals, Businesses, Retirement, **Debts**, **Unpaid Zakat
+from previous years** (new), Settings, Review (still 12). Gems step removed. Debts: "Next 12
+months of installment payments" removed; added Credit card balances, Mortgage (next principal
+payment), Personal loans due this year, Money owed to family or friends, Unpaid taxes & bills,
+Other liabilities ("Debts due now" kept, its helper now says "not in a box below" so nothing is
+entered twice). All debts are subtracted in full. Unpaid Zakat: one amount per earlier year,
+**added on top** of this year's Zakat as the user specified ($1,000 this year + $3,000 last year
+= $4,000); still due when this year is below nisab or not yet a lunar year (new status
+`unpaidPriorOnly`, "Unpaid Zakat from previous years is due"). Result shows This year's Zakat /
+Unpaid from previous years / Total when there is any. The engine still reads gems and
+installments so older saved calculations and guest-save transfers give the same answer; the
+three of the 20 confirmed cases that use them are now checked against the engine directly.
+Draft version bumped to 2 (an old half-filled form is not restored into the wrong step).
+**Open for Mufti Ahmad:** (1) whether unpaid earlier-year Zakat should also reduce this year's
+zakatable wealth as a debt (the Hanafi view usually counts it as one; the user chose simple
+addition). The user confirmed the debt rules: credit card balances are subtracted in full, and
+for a mortgage only the next principal payment counts. Tests 241/241, build passes, headless Chrome 14/14 (steps, 7 debt
+boxes, $4,000.00 result and breakdown, below-nisab $3,000.00, save and Saved list).
 
 **Regional nisab note reworded by the user (2026-11-09).** `helperText.nisabRegionNote` now uses
 the user's own wording ("…using the Gold Standard… higher zakat threshold and can be more

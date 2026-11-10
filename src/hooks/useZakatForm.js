@@ -1,15 +1,19 @@
 import { useState } from 'react'
-import { calculateZakat } from '../engine/calculateZakat.js'
+import { calculateZakat, DEBT_FIELDS } from '../engine/calculateZakat.js'
 import { dollarsTextToCents, dollarsTextToCentsOrNull, percentTextToNumber } from '../lib/money.js'
 import { gramsTextToNumber, isValidIsoDate } from '../lib/inputRules.js'
 
-export const emptyGem = () => ({ valueCents: '', purpose: 'personal' })
 export const emptySecurity = () => ({ valueCents: '', purpose: 'longTerm', countInFull: false, zakatableSharePct: '' })
 export const emptyCrypto = () => ({ valueCents: '', purpose: 'longTerm' })
 export const emptyRealEstate = () => ({ valueCents: '' })
 export const emptyRental = () => ({ rentCollectedUnspentCents: '', expensesPaidCents: '' })
 export const emptyBusiness = () => ({ ownershipPct: '', cashCents: '', inventoryCents: '', receivablesCents: '', liabilitiesCents: '' })
 export const emptyRetirement = () => ({ vestedBalanceCents: '', method: 'whenAccessible', zakatableSharePct: '', penaltyTaxCents: '' })
+export const emptyUnpaidYear = () => ({ amountCents: '' })
+
+// The debt boxes on the Debts step (the old installments box is gone).
+export const DEBT_FORM_FIELDS = DEBT_FIELDS.filter((k) => k !== 'installments12mCents')
+const emptyDebts = () => Object.fromEntries(DEBT_FORM_FIELDS.map((k) => [k, '']))
 
 export function initialFormState() {
   return {
@@ -17,14 +21,14 @@ export function initialFormState() {
     savingsCents: '',
     gold: { grams: '', valueCents: '' },
     silver: { grams: '', valueCents: '' },
-    gems: [emptyGem()],
     securities: [emptySecurity()],
     crypto: [emptyCrypto()],
     realEstateForSale: [emptyRealEstate()],
     rentals: [emptyRental()],
     businesses: [emptyBusiness()],
     retirement: [emptyRetirement()],
-    debts: { dueNowCents: '', installments12mCents: '' },
+    debts: emptyDebts(),
+    unpaidZakat: [emptyUnpaidYear()],
     nisab: '', // '' means not chosen yet — no default per PROJECT.md S1.9
     heldOneLunarYear: null, // null means not answered yet
     zakatDate: '',
@@ -37,14 +41,16 @@ export function isValidFormState(data) {
   return (
     data &&
     typeof data === 'object' &&
-    Array.isArray(data.gems) &&
     Array.isArray(data.securities) &&
     Array.isArray(data.crypto) &&
     Array.isArray(data.realEstateForSale) &&
     Array.isArray(data.rentals) &&
     Array.isArray(data.businesses) &&
     Array.isArray(data.retirement) &&
-    typeof data.debts === 'object'
+    Array.isArray(data.unpaidZakat) &&
+    data.debts !== null &&
+    typeof data.debts === 'object' &&
+    DEBT_FORM_FIELDS.every((k) => typeof data.debts[k] === 'string')
   )
 }
 
@@ -112,10 +118,6 @@ export function buildEngineInputs(form) {
     savingsCents: money('savingsCents', form.savingsCents, localErrors),
     gold: { grams: grams('gold.grams', form.gold.grams, localErrors), valueCents: moneyOrNull('gold.valueCents', form.gold.valueCents, localErrors) },
     silver: { grams: grams('silver.grams', form.silver.grams, localErrors), valueCents: moneyOrNull('silver.valueCents', form.silver.valueCents, localErrors) },
-    gems: form.gems.map((g, i) => ({
-      purpose: g.purpose,
-      valueCents: money(`gems[${i}].valueCents`, g.valueCents, localErrors),
-    })),
     securities: form.securities.map((s, i) => ({
       purpose: s.purpose,
       countInFull: s.countInFull,
@@ -146,10 +148,10 @@ export function buildEngineInputs(form) {
       zakatableSharePct: percent(`retirement[${i}].zakatableSharePct`, r.zakatableSharePct, localErrors, undefined),
       penaltyTaxCents: money(`retirement[${i}].penaltyTaxCents`, r.penaltyTaxCents, localErrors),
     })),
-    debts: {
-      dueNowCents: money('debts.dueNowCents', form.debts.dueNowCents, localErrors),
-      installments12mCents: money('debts.installments12mCents', form.debts.installments12mCents, localErrors),
-    },
+    debts: Object.fromEntries(DEBT_FORM_FIELDS.map((k) => [k, money(`debts.${k}`, form.debts[k], localErrors)])),
+    unpaidZakat: form.unpaidZakat.map((y, i) => ({
+      amountCents: money(`unpaidZakat[${i}].amountCents`, y.amountCents, localErrors),
+    })),
     nisab: form.nisab,
     heldOneLunarYear: form.heldOneLunarYear,
     zakatDate: zakatDate(form.zakatDate, localErrors),
