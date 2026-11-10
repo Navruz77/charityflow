@@ -1,10 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { createContext, useContext, useEffect, useRef } from 'react'
 import ProgressIndicator from './ProgressIndicator.jsx'
+
+// Once someone has reached the review screen, CalculatorPage provides a
+// function here so every step can jump straight back to the review instead
+// of clicking Next through all the remaining steps. null = not reached yet.
+export const ReviewShortcut = createContext(null)
 
 // Wraps one step: heading (focused on mount for keyboard/screen-reader
 // users), progress, the step's fields, and back/next controls.
 export default function StepShell({ step, total, title, onBack, onNext, nextLabel = 'Next', children }) {
   const headingRef = useRef(null)
+  const goToReview = useContext(ReviewShortcut)
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -35,6 +41,14 @@ export default function StepShell({ step, total, title, onBack, onNext, nextLabe
             {nextLabel}
           </button>
         </div>
+        {goToReview && (
+          // Changes are already kept as they are typed, so this just jumps.
+          <div className="btn-row" style={{ marginTop: 'var(--space-3)' }}>
+            <button type="button" className="btn btn-secondary" onClick={goToReview}>
+              Back to review
+            </button>
+          </div>
+        )}
       </form>
     </div>
   )

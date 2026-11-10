@@ -17,6 +17,7 @@ import StepRetirement from '../components/steps/StepRetirement.jsx'
 import StepDebts from '../components/steps/StepDebts.jsx'
 import StepSettings from '../components/steps/StepSettings.jsx'
 import StepSummary from '../components/steps/StepSummary.jsx'
+import { ReviewShortcut } from '../components/StepShell.jsx'
 
 const ResultsPage = lazy(() => import('./ResultsPage.jsx'))
 
@@ -47,6 +48,10 @@ export default function CalculatorPage() {
   const { prices, error: priceError, loading: pricesLoading, stale } = usePrices()
   const [stepIndex, setStepIndex] = useState(draft?.stepIndex ?? 0)
   const [errors, setErrors] = useState([])
+  // True once the review screen has been shown; unlocks "Back to review".
+  const [reviewReached, setReviewReached] = useState(
+    () => draft?.reviewReached === true || draft?.showResult === true || draft?.stepIndex === STEPS.length,
+  )
   // A result that was on screen before a reload is worked out again from
   // the same entries and the same prices, so it comes back unchanged.
   const [shown, setShown] = useState(() => (draft?.showResult ? rerun(calculate, draft.pricesUsed) : null))
@@ -70,12 +75,19 @@ export default function CalculatorPage() {
 
   // Keep the draft up to date after every change.
   useEffect(() => {
-    saveDraft({ form, stepIndex, pricesUsed: shown?.pricesUsed ?? null, showResult: shown !== null })
-  }, [form, stepIndex, shown])
+    saveDraft({ form, stepIndex, pricesUsed: shown?.pricesUsed ?? null, showResult: shown !== null, reviewReached })
+  }, [form, stepIndex, shown, reviewReached])
 
-  const goToStep = (i) => setStepIndex(i)
-  const next = () => setStepIndex((i) => Math.min(i + 1, STEPS.length))
-  const back = () => setStepIndex((i) => Math.max(i - 1, 0))
+  // Every step change goes through here, so reaching the review (index
+  // STEPS.length) is remembered however it happened.
+  const showStep = (i) => {
+    setStepIndex(i)
+    if (i === STEPS.length) setReviewReached(true)
+  }
+  const goToReview = () => showStep(STEPS.length)
+  const goToStep = (i) => showStep(i)
+  const next = () => showStep(Math.min(stepIndex + 1, STEPS.length))
+  const back = () => showStep(Math.max(stepIndex - 1, 0))
 
   const handleCalculate = () => {
     if (!prices) return // the summary screen hides the button until prices exist
@@ -95,13 +107,14 @@ export default function CalculatorPage() {
     clearDraft()
     setShown(null)
     setErrors([])
+    setReviewReached(false)
     setStepIndex(0)
   }
 
   // Back to the entries (e.g. to try the other nisab, S1.9) without losing them.
   const handleEdit = () => {
     setShown(null)
-    setStepIndex(STEPS.length)
+    showStep(STEPS.length)
   }
 
   const result = shown?.result
@@ -157,16 +170,21 @@ export default function CalculatorPage() {
   }
 
   const StepComponent = STEPS[stepIndex]
+  // The last step (Settings) already has a "Review" button, so the shortcut
+  // is only offered on the steps before it. Settings keeps its own checks.
+  const isLastStep = stepIndex === STEPS.length - 1
   return (
-    <StepComponent
-      step={stepIndex + 1}
-      total={TOTAL_STEPS}
-      form={form}
-      setForm={setForm}
-      errors={errors}
-      onBack={stepIndex > 0 ? back : undefined}
-      onNext={next}
-    />
+    <ReviewShortcut.Provider value={reviewReached && !isLastStep ? goToReview : null}>
+      <StepComponent
+        step={stepIndex + 1}
+        total={TOTAL_STEPS}
+        form={form}
+        setForm={setForm}
+        errors={errors}
+        onBack={stepIndex > 0 ? back : undefined}
+        onNext={next}
+      />
+    </ReviewShortcut.Provider>
   )
 }
 

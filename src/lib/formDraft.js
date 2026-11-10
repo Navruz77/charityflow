@@ -37,7 +37,13 @@ export function loadDraft(isValidForm, maxStep) {
     const p = d.pricesUsed
     const pricesUsed =
       p && Number(p.goldUsdPerGram) > 0 && Number(p.silverUsdPerGram) > 0 && typeof p.fetchedAt === 'string' ? p : null
-    return { form: d.form, stepIndex, pricesUsed, showResult: d.showResult === true && pricesUsed !== null }
+    return {
+      form: d.form,
+      stepIndex,
+      pricesUsed,
+      showResult: d.showResult === true && pricesUsed !== null,
+      reviewReached: d.reviewReached === true,
+    }
   } catch {
     return null
   }

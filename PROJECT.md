@@ -218,6 +218,20 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Calculator: gold regional note + "Back to review" (2026-11-09).** At the user's request,
+`helperText.nisabRegionNote` (Settings step) now says scholars recommend the **gold** nisab for
+the US, Canada and the EU (was silver), with the reason changed to fit gold: gold has kept its
+value over the centuries far better than silver, so it is closer to the wealth the nisab was
+meant to mark. The nisab helper above the dropdown no longer calls gold "the more cautious,
+traditional choice" (both are traditional, and "cautious" is the usual argument for silver); it
+now says gold better reflects the value the nisab was meant to represent. Not yet checked by
+Mufti Ahmad. Once the review screen has been reached, steps 1-10 show
+a "Back to review" button (`ReviewShortcut` context in `StepShell.jsx`, provided by
+`CalculatorPage`), so an Edit no longer means clicking Next through every remaining step.
+Settings keeps its own "Review" button and checks. The flag is saved in the draft
+(`reviewReached`), so it survives a reload, and Start over clears it. Tests 227/227, build
+passes, headless Chrome at 360px: all checks pass.
+
 **Input validation pass (2026-11-09).** User asked for sanitization and validation on every form.
 One set of rules in `src/lib/inputRules.js`, used by the screens and the server: money boxes
 accept only digits, commas and one point with 2 decimals (13 whole-dollar digits max), grams only

@@ -21,8 +21,19 @@ beforeEach(() => {
 describe('in-progress form survives a reload (M5 unknown 1)', () => {
   it('restores the entries, the step and an on-screen result', () => {
     const form = { ...initialFormState(), cashCents: '1234.56', nisab: 'gold' }
-    saveDraft({ form, stepIndex: 4, pricesUsed: PRICES, showResult: true })
-    expect(loadDraft(isValidFormState, 11)).toEqual({ form, stepIndex: 4, pricesUsed: PRICES, showResult: true })
+    saveDraft({ form, stepIndex: 4, pricesUsed: PRICES, showResult: true, reviewReached: true })
+    expect(loadDraft(isValidFormState, 11)).toEqual({
+      form,
+      stepIndex: 4,
+      pricesUsed: PRICES,
+      showResult: true,
+      reviewReached: true,
+    })
+  })
+
+  it('treats a missing or odd reviewReached as not reached', () => {
+    saveDraft({ form: initialFormState(), stepIndex: 2, pricesUsed: null, showResult: false, reviewReached: 'yes' })
+    expect(loadDraft(isValidFormState, 11).reviewReached).toBe(false)
   })
 
   it('keeps it in sessionStorage, not localStorage', () => {
