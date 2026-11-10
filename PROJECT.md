@@ -152,7 +152,8 @@ Stale when now minus `fetchedAt` is over 24 hours. Prices must be numbers above 
 `public/prices.json` was only a placeholder; remove it once `/api/prices` exists.
 
 ### localStorage (B.3)
-Keys: `cf.v1.saved` (newest first), `cf.v1.prices`, `cf.v1.firstVisitNoteDismissed`.
+Keys: `cf.v1.saved` (newest first), `cf.v1.prices`, `cf.v1.firstVisitNoteDismissed`, `cf.v1.theme`
+("light" or "dark" from the header switch; added 2026-11-10, nothing personal).
 A saved calculation: `id`, `savedAt`, `zakatDate {gregorian, hijri}`, `inputs`, `nisabChoice`,
 `pricesUsed {goldUsdPerGram, silverUsdPerGram, fetchedAt}`, `result`. Nothing else is stored.
 
@@ -224,6 +225,19 @@ S8.1 to S8.3, S12.1 to S12.4. Not built (Final Release): S4.3, S6.2, S6.6, S8.4,
 S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
+
+**Light/dark switch in the header (2026-11-10).** User asked for a button to switch themes.
+`src/components/ThemeToggle.jsx` (44x44 icon button: moon in light mode, sun in dark; label
+"Switch to dark mode" / "Switch to light mode"), logic in `src/lib/theme.js`. Until someone taps
+it, the app follows the device setting as before. The choice is kept in a new localStorage key
+`cf.v1.theme` (B.3 updated: only "light" or "dark") and applied before the page draws by
+`public/theme-init.js` (a separate file, not inline, so a strict CSP stays possible), so there
+is no flash of the other theme. CSS: dark tokens apply when the device prefers dark and light
+was not picked, or when dark was picked (`src/styles/variables.css`). Layout: phones put the
+wordmark and switch on the top row with the nav below; 720px and up is one row with the switch
+last. Tests 246/246, build passes, headless Chrome 15/15 (360/320/1280px, no sideways scroll,
+tap and Enter key, choice survives a reload, dark device with light picked). Note: CLAUDE.md still
+says base `/charityflow/`; the real base is `/` since the move to Render.
 
 **Calculator: gems removed, new debt boxes, unpaid Zakat step (2026-11-10).** At the user's
 request (engine change asked for). Steps are now: Cash and savings, Gold and silver, Stocks and

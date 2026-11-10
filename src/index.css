@@ -79,6 +79,53 @@ a {
   color: var(--accent);
 }
 
+/* Light/dark switch (ThemeToggle.jsx). Phones: wordmark and switch share
+   the top row, nav links wrap onto the row below. Wider screens: one row,
+   switch at the far right. */
+.app-header .brand {
+  order: 1;
+}
+
+.theme-toggle {
+  order: 2;
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+
+.theme-toggle:hover {
+  background: var(--accent-soft);
+}
+
+.app-header nav {
+  order: 3;
+  flex-basis: 100%;
+}
+
+@media (min-width: 720px) {
+  .app-header nav {
+    order: 2;
+    flex-basis: auto;
+    margin-left: auto;
+  }
+
+  .theme-toggle {
+    order: 3;
+    margin-left: 0;
+  }
+}
+
 /* A.13: offline banner, under the header on every screen. Uses the text
    color on the soft accent so contrast stays AA in light and dark mode. */
 .offline-banner {

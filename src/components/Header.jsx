@@ -1,7 +1,8 @@
 import { useSession } from '../hooks/useSession.jsx'
 import { useReminderCount } from '../hooks/useReminderCount.js'
+import ThemeToggle from './ThemeToggle.jsx'
 
-// App header: logo/name and primary nav. The last link is "Sign in" for
+// App header: logo/name, primary nav and the light/dark switch. The last link is "Sign in" for
 // guests and "Account" once signed in.
 export default function Header({ route }) {
   const session = useSession()
@@ -44,6 +45,7 @@ export default function Header({ route }) {
           </a>
         )}
       </nav>
+      <ThemeToggle />
     </header>
   )
 }
