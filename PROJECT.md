@@ -218,6 +218,11 @@ S10.x, S11.x (not part of this plan; do not build or mention them).
 
 ## Status (updated after each step; newest first)
 
+**Regional nisab note reworded by the user (2026-11-09).** `helperText.nisabRegionNote` now uses
+the user's own wording ("…using the Gold Standard… higher zakat threshold and can be more
+beneficial to deserving zakat recipients…"). Open question flagged: a higher threshold means
+fewer people owe Zakat, so the "more beneficial to recipients" reason may need Mufti Ahmad's review.
+
 **Calculator: gold regional note + "Back to review" (2026-11-09).** At the user's request,
 `helperText.nisabRegionNote` (Settings step) now says scholars recommend the **gold** nisab for
 the US, Canada and the EU (was silver), with the reason changed to fit gold: gold has kept its
